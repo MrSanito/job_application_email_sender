@@ -16,6 +16,9 @@
     "@upstash/qstash": "^2.11.3",
     "@upstash/redis": "^1.38.4",
     "canvas-confetti": "^1.9.4",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "daisyui": "^5.7.32",
     "lucide-react": "^1.43.0",
     "mongodb": "^7.6.0",
     "mongoose": "^9.9.5",
@@ -23,6 +26,8 @@
     "nodemailer": "^10.0.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "sonner": "^2.0.8",
+    "tailwind-merge": "^3.6.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

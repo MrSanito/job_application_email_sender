@@ -15,11 +15,19 @@ import {
   MapPin,
   Bot,
   RefreshCw,
-  CheckCircle2,
-  Wand2
+  Wand2,
+  Copy,
+  Check
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Lead } from '@/types';
 import { renderTemplate } from '@/lib/template-engine';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface EmailTemplateEditorProps {
   subjectTemplate: string;
@@ -33,7 +41,7 @@ interface EmailTemplateEditorProps {
 const TEMPLATE_VARIABLES = [
   { tag: '{{name}}', label: 'Contact Name', icon: User },
   { tag: '{{company}}', label: 'Company Name', icon: Building },
-  { tag: '{{catName}}', label: 'Job Role / Industry', icon: Briefcase },
+  { tag: '{{catName}}', label: 'Role / Industry', icon: Briefcase },
   { tag: '{{email}}', label: 'Recipient Email', icon: Mail },
   { tag: '{{address}}', label: 'Location / City', icon: MapPin },
 ];
@@ -46,9 +54,9 @@ export default function EmailTemplateEditor({
   previewLead,
   onOpenTestEmailModal,
 }: EmailTemplateEditorProps) {
-  const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'ai'>('editor');
+  const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
-  const [aiStatusMessage, setAiStatusMessage] = useState<string | null>(null);
+  const [copiedPreview, setCopiedPreview] = useState(false);
 
   const sampleLead: Lead = previewLead || {
     id: 'sample-1',
@@ -65,13 +73,13 @@ export default function EmailTemplateEditor({
 
   const insertTagToBody = (tag: string) => {
     onBodyChange(bodyTemplate + '\n' + tag);
+    toast.info(`Inserted ${tag} into email body`);
   };
 
   // Generate on-the-spot personalized email using LangChain & Gemini
   const handleGenerateOnTheSpotWithAi = async () => {
     try {
       setIsGeneratingAi(true);
-      setAiStatusMessage(null);
 
       const res = await fetch('/api/ai/generate-email', {
         method: 'POST',
@@ -79,10 +87,10 @@ export default function EmailTemplateEditor({
         body: JSON.stringify({
           lead: sampleLead,
           candidateProfile: {
-            name: 'Vishal',
-            role: 'Senior Full Stack & AI Engineer',
-            skills: 'Next.js, React, Node.js, TypeScript, Python, AI Agents, Upstash/Redis, Distributed Microservices',
-            portfolioUrl: 'https://github.com/vishal',
+            name: 'Vishal Nishad',
+            role: 'Full-Stack Developer (MERN + Gen AI)',
+            skills: 'Next.js, React, Node.js, TypeScript, AI Voice systems (Pipecat), STT/TTS, BullMQ, Redis, MongoDB',
+            portfolioUrl: 'https://github.com/MrSanito',
           },
         }),
       });
@@ -94,64 +102,64 @@ export default function EmailTemplateEditor({
 
       onSubjectChange(data.subject);
       onBodyChange(data.textBody || data.htmlBody.replace(/<[^>]*>?/gm, ''));
-      setAiStatusMessage(
-        `Generated on-the-spot via ${data.modelUsed || 'Google Gemini AI'} in ${data.latencyMs}ms!`
-      );
       setActiveTab('preview');
+      toast.success(`Generated email via ${data.modelUsed || 'Google Gemini AI'} in ${data.latencyMs}ms!`);
     } catch (err: unknown) {
-      setAiStatusMessage(
-        err instanceof Error ? `Error: ${err.message}` : 'Failed to generate with AI'
-      );
+      const msg = err instanceof Error ? err.message : 'Failed to generate with AI';
+      toast.error(msg);
     } finally {
       setIsGeneratingAi(false);
     }
   };
 
+  const handleCopyPreview = () => {
+    navigator.clipboard.writeText(`Subject: ${renderedSubject}\n\n${renderedBody}`);
+    setCopiedPreview(true);
+    toast.success('Copied full email to clipboard!');
+    setTimeout(() => setCopiedPreview(false), 2000);
+  };
+
   return (
-    <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm shadow-xl space-y-4">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <Card glass className="shadow-2xl overflow-hidden">
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-              <FileText className="w-5 h-5 text-indigo-400" />
-              Dynamic Email Generator & Template
-            </h3>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800/50">
-              <Bot className="w-3 h-3 text-cyan-400" />
-              Google GenAI + LangChain Enabled
-            </span>
-          </div>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Personalize on-the-spot using Google Gemini AI or customize your base templates.
-          </p>
+          <CardTitle>
+            <FileText className="w-5 h-5 text-indigo-400" />
+            <span>Dynamic Email Composer & AI Studio</span>
+            <Badge variant="purple" dot>
+              <Bot className="w-3 h-3 mr-1" />
+              Gemini GenAI
+            </Badge>
+          </CardTitle>
+          <CardDescription>
+            Craft standard recruitment templates with smart dynamic tags or click to personalize on-the-spot with Gemini.
+          </CardDescription>
         </div>
 
-        {/* Action / View Tabs & AI Generate */}
+        {/* Actions & Tab Switchers */}
         <div className="flex flex-wrap items-center gap-2">
           {/* 1-Click AI Generator Button */}
-          <button
-            type="button"
+          <Button
+            variant="glowing"
+            size="sm"
             onClick={handleGenerateOnTheSpotWithAi}
-            disabled={isGeneratingAi}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white text-xs font-bold shadow-md shadow-indigo-600/30 hover:scale-[1.02] disabled:opacity-50 transition-all"
+            loading={isGeneratingAi}
+            loadingText="Crafting with Gemini..."
+            className="text-xs"
           >
-            {isGeneratingAi ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Wand2 className="w-3.5 h-3.5 text-cyan-200" />
-            )}
-            <span>Generate with Gemini AI</span>
-          </button>
+            <Wand2 className="w-3.5 h-3.5 text-indigo-950" />
+            <span>Gemini AI Personalize</span>
+          </Button>
 
-          <div className="flex items-center bg-slate-950/80 border border-slate-800 p-1 rounded-xl">
+          {/* Mode Switcher */}
+          <div className="flex items-center bg-slate-900/90 border border-slate-800 p-1 rounded-xl">
             <button
               type="button"
               onClick={() => setActiveTab('editor')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
                 activeTab === 'editor'
                   ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               <Code className="w-3.5 h-3.5" />
@@ -160,127 +168,137 @@ export default function EmailTemplateEditor({
             <button
               type="button"
               onClick={() => setActiveTab('preview')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
                 activeTab === 'preview'
                   ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               <Eye className="w-3.5 h-3.5" />
-              Live Preview
+              Preview
             </button>
           </div>
 
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onOpenTestEmailModal}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-medium border border-slate-700 transition-colors"
+            className="text-xs border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10"
           >
             <Send className="w-3.5 h-3.5" />
             Send Test
-          </button>
+          </Button>
         </div>
-      </div>
+      </CardHeader>
 
-      {/* AI Success / Status Toast */}
-      {aiStatusMessage && (
-        <div className="p-3 bg-gradient-to-r from-indigo-950/60 to-cyan-950/40 border border-cyan-500/30 rounded-xl text-xs text-cyan-200 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-cyan-400 flex-shrink-0" />
-            <span>{aiStatusMessage}</span>
+      <CardContent className="space-y-5">
+        {/* Dynamic Variable Chips */}
+        <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800/80">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+            <Tag className="w-3.5 h-3.5 text-indigo-400" />
+            Click Variable to Insert:
           </div>
-          <button
-            onClick={() => setAiStatusMessage(null)}
-            className="text-slate-400 hover:text-white text-xs"
-          >
-            ✕
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {TEMPLATE_VARIABLES.map((v) => {
+              const Icon = v.icon;
+              return (
+                <button
+                  key={v.tag}
+                  type="button"
+                  onClick={() => insertTagToBody(v.tag)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 border border-indigo-700/30 text-xs font-mono transition-all hover:scale-105 active:scale-95 group cursor-pointer"
+                  title={`Insert ${v.label}`}
+                >
+                  <Icon className="w-3 h-3 text-indigo-400 group-hover:text-cyan-400 transition-colors" />
+                  <span>{v.tag}</span>
+                  <span className="text-[10px] text-indigo-400/80 font-sans hidden sm:inline">
+                    ({v.label})
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      )}
 
-      {/* Dynamic Variable Pills */}
-      <div className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1">
-          <Tag className="w-3 h-3 text-indigo-400" />
-          Quick Variable Insertion:
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {TEMPLATE_VARIABLES.map((v) => {
-            const Icon = v.icon;
-            return (
-              <button
-                key={v.tag}
-                type="button"
-                onClick={() => insertTagToBody(v.tag)}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 border border-indigo-700/30 text-xs font-mono transition-colors group"
-                title={`Click to insert ${v.label}`}
+        {/* Main Content: Editor vs Preview */}
+        {isGeneratingAi ? (
+          /* Shimmering AI Generation Skeleton */
+          <div className="p-6 rounded-2xl border border-indigo-500/30 bg-indigo-950/20 space-y-4">
+            <div className="flex items-center gap-3">
+              <Sparkles className="w-5 h-5 text-indigo-400 animate-spin" />
+              <div>
+                <h4 className="font-bold text-sm text-white">Google Gemini Generating Personalized Pitch...</h4>
+                <p className="text-xs text-slate-400">Synthesizing lead company info with candidate profile</p>
+              </div>
+            </div>
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-40 w-full" />
+          </div>
+        ) : activeTab === 'editor' ? (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                Subject Line Template
+              </label>
+              <Input
+                type="text"
+                value={subjectTemplate}
+                onChange={(e) => onSubjectChange(e.target.value)}
+                placeholder="e.g. Full-Stack / AI Voice Developer — open to opportunities"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                Email Body Template
+              </label>
+              <Textarea
+                rows={9}
+                value={bodyTemplate}
+                onChange={(e) => onBodyChange(e.target.value)}
+                placeholder="Hi {{name}}, I noticed {{company}}..."
+                className="font-mono text-xs leading-relaxed"
+              />
+            </div>
+          </div>
+        ) : (
+          /* Live Rendered Preview */
+          <div className="rounded-2xl border border-slate-800 bg-slate-950/80 p-5 space-y-4 relative">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+              <div>
+                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Previewing Recipient</div>
+                <div className="text-sm font-bold text-cyan-400 mt-0.5">
+                  {sampleLead.name} ({sampleLead.email}) — <span className="text-slate-300">{sampleLead.company}</span>
+                </div>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyPreview}
+                className="text-xs"
               >
-                <Icon className="w-3 h-3 text-indigo-400 group-hover:scale-110 transition-transform" />
-                <span>{v.tag}</span>
-                <span className="text-[10px] text-indigo-400/80 font-sans hidden sm:inline">
-                  ({v.label})
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+                {copiedPreview ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedPreview ? 'Copied' : 'Copy'}</span>
+              </Button>
+            </div>
 
-      {activeTab === 'editor' ? (
-        <div className="space-y-4">
-          {/* Subject Line */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-              Subject Line Template
-            </label>
-            <input
-              type="text"
-              value={subjectTemplate}
-              onChange={(e) => onSubjectChange(e.target.value)}
-              placeholder="e.g. Application for {{catName}} Role - Full Stack Engineer"
-              className="w-full bg-slate-950/90 border border-slate-800 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition-colors"
-            />
-          </div>
+            <div>
+              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Subject</div>
+              <div className="text-sm font-bold text-white mt-1 bg-slate-900/90 px-3.5 py-2 rounded-xl border border-slate-800">
+                {renderedSubject}
+              </div>
+            </div>
 
-          {/* Email Body */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-              Email Body Template / AI Instructions
-            </label>
-            <textarea
-              rows={9}
-              value={bodyTemplate}
-              onChange={(e) => onBodyChange(e.target.value)}
-              placeholder="Type your personalized cold email template here..."
-              className="w-full bg-slate-950/90 border border-slate-800 focus:border-indigo-500 rounded-xl p-4 text-xs font-mono leading-relaxed text-slate-200 placeholder-slate-500 outline-none transition-colors resize-y"
-            />
-          </div>
-        </div>
-      ) : (
-        /* Live Rendered Preview */
-        <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-5 space-y-4">
-          <div className="border-b border-slate-800 pb-3">
-            <div className="text-xs text-slate-500 uppercase tracking-wider">Preview for Lead:</div>
-            <div className="text-sm font-semibold text-cyan-400 mt-0.5">
-              {sampleLead.name} ({sampleLead.email}) — <span className="text-slate-300">{sampleLead.company}</span>
+            <div>
+              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Body</div>
+              <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-200 whitespace-pre-wrap leading-relaxed font-sans">
+                {renderedBody}
+              </div>
             </div>
           </div>
-
-          <div>
-            <div className="text-xs text-slate-500 uppercase tracking-wider">Subject:</div>
-            <div className="text-sm font-semibold text-white mt-0.5">
-              {renderedSubject}
-            </div>
-          </div>
-
-          <div>
-            <div className="text-xs text-slate-500 uppercase tracking-wider mb-1.5">Body:</div>
-            <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800/80 text-xs text-slate-200 whitespace-pre-wrap leading-relaxed">
-              {renderedBody}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

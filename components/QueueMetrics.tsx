@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { 
   Activity, 
   CheckCircle2, 
@@ -13,9 +14,16 @@ import {
   Send, 
   Sparkles,
   Zap,
-  Calendar
+  Calendar,
+  AlertTriangle
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { CampaignState } from '@/types';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 interface QueueMetricsProps {
   campaign: CampaignState | null;
@@ -36,37 +44,38 @@ export default function QueueMetrics({
 }: QueueMetricsProps) {
   const [triggerCount, setTriggerCount] = useState<number>(5);
   const [isActing, setIsActing] = useState<boolean>(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState<boolean>(false);
 
   if (!campaign) {
     return (
-      <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-8 text-center backdrop-blur-sm shadow-xl">
-        <div className="w-12 h-12 rounded-2xl bg-indigo-950/60 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto mb-3">
-          <Activity className="w-6 h-6" />
+      <Card glass className="p-10 text-center shadow-2xl">
+        <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 flex items-center justify-center mx-auto mb-4">
+          <Activity className="w-7 h-7" />
         </div>
-        <h3 className="text-lg font-semibold text-white">No Active Campaign Queued</h3>
-        <p className="text-xs text-slate-400 max-w-md mx-auto mt-1 mb-5">
+        <h3 className="text-xl font-bold text-white">No Active Campaign Queued</h3>
+        <p className="text-xs text-slate-400 max-w-md mx-auto mt-1 mb-6 leading-relaxed">
           Upload an Excel lead sheet and configure your schedule on the Leads & Planner page, or run a 1-minute instant test in Upstash QStash.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <a
-            href="/"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 transition-all"
-          >
-            Go to Leads & Campaign Planner
-          </a>
+          <Link href="/">
+            <Button variant="default" className="gap-2">
+              <Sparkles className="w-4 h-4 text-cyan-300" />
+              Go to Leads & Campaign Planner
+            </Button>
+          </Link>
 
           {onOpenQStashTest && (
-            <button
-              type="button"
+            <Button
+              variant="amber"
               onClick={onOpenQStashTest}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition-all hover:scale-[1.02]"
+              className="gap-2"
             >
-              <Zap className="w-3.5 h-3.5 text-amber-400" />
+              <Zap className="w-4 h-4 text-slate-950" />
               <span>⏱️ Schedule 1-Min QStash Test</span>
-            </button>
+            </Button>
           )}
         </div>
-      </div>
+      </Card>
     );
   }
 
@@ -79,169 +88,180 @@ export default function QueueMetrics({
     try {
       setIsActing(true);
       await onCampaignAction(action);
+      if (action === 'pause') toast.warning('Campaign execution paused');
+      if (action === 'resume') toast.success('Campaign execution resumed');
+      if (action === 'clear') toast.info('Campaign cleared and reset');
+    } catch {
+      toast.error(`Failed to ${action} campaign`);
     } finally {
       setIsActing(false);
+      setIsResetConfirmOpen(false);
+    }
+  };
+
+  const handleTrigger = async () => {
+    try {
+      await onTriggerNext(triggerCount);
+      toast.success(`Dispatched ${triggerCount} emails asynchronously!`);
+    } catch {
+      toast.error('Failed to dispatch batch');
     }
   };
 
   return (
     <div className="space-y-6">
       {/* Campaign Title & Status Header */}
-      <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm shadow-xl">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <h2 className="text-xl font-bold text-white tracking-tight">{campaign.name}</h2>
-              <span
-                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                  status === 'running'
-                    ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/40'
-                    : status === 'paused'
-                    ? 'bg-amber-950/60 text-amber-400 border border-amber-800/40'
-                    : 'bg-indigo-950/60 text-indigo-400 border border-indigo-800/40'
-                }`}
-              >
-                {status === 'running' && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />}
-                {status === 'paused' && <span className="w-2 h-2 rounded-full bg-amber-400" />}
-                {status.toUpperCase()}
-              </span>
+      <Card glass className="shadow-2xl overflow-hidden">
+        <CardContent className="p-6 space-y-5">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-extrabold text-white tracking-tight">{campaign.name}</h2>
+                {status === 'running' && (
+                  <Badge variant="success" dot className="text-xs">
+                    RUNNING
+                  </Badge>
+                )}
+                {status === 'paused' && (
+                  <Badge variant="warning" dot className="text-xs">
+                    PAUSED
+                  </Badge>
+                )}
+                {status === 'completed' && (
+                  <Badge variant="default" dot className="text-xs">
+                    COMPLETED
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 mt-1">
+                Campaign ID: <span className="font-mono text-slate-300">{campaign.id}</span> • Created:{' '}
+                {new Date(campaign.createdAt).toLocaleString()}
+              </p>
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              Campaign ID: <span className="font-mono text-slate-300">{campaign.id}</span> • Created:{' '}
-              {new Date(campaign.createdAt).toLocaleString()}
-            </p>
-          </div>
 
-          {/* Action Control Bar */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Manual Refresh */}
-            <button
-              type="button"
-              onClick={onRefresh}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-medium transition-colors"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Refresh
-            </button>
-
-            {/* Pause / Resume */}
-            {status === 'running' ? (
-              <button
-                type="button"
-                onClick={() => handleAction('pause')}
-                disabled={isActing}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-xs font-semibold transition-colors"
+            {/* Action Control Bar */}
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onRefresh}
+                className="text-xs gap-1.5"
               >
-                <Pause className="w-3.5 h-3.5" />
-                Pause
-              </button>
-            ) : status === 'paused' ? (
-              <button
-                type="button"
-                onClick={() => handleAction('resume')}
+                <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
+                Refresh
+              </Button>
+
+              {status === 'running' ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleAction('pause')}
+                  loading={isActing}
+                  className="text-xs gap-1.5 border-amber-500/30 text-amber-300 hover:bg-amber-500/10"
+                >
+                  <Pause className="w-3.5 h-3.5" />
+                  Pause Campaign
+                </Button>
+              ) : status === 'paused' ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleAction('resume')}
+                  loading={isActing}
+                  className="text-xs gap-1.5 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
+                >
+                  <Play className="w-3.5 h-3.5" />
+                  Resume Campaign
+                </Button>
+              ) : null}
+
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setIsResetConfirmOpen(true)}
                 disabled={isActing}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition-colors"
+                className="text-xs gap-1.5"
               >
-                <Play className="w-3.5 h-3.5" />
-                Resume
-              </button>
-            ) : null}
+                <Trash2 className="w-3.5 h-3.5" />
+                Reset
+              </Button>
+            </div>
+          </div>
 
-            {/* Clear Campaign */}
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm('Are you sure you want to clear and reset this campaign?')) {
-                  handleAction('clear');
-                }
-              }}
-              disabled={isActing}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 border border-slate-800 hover:border-rose-800/50 text-xs font-medium transition-colors"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Reset
-            </button>
+          {/* Overall Progress Bar */}
+          <div className="pt-2">
+            <div className="flex items-center justify-between text-xs mb-1.5">
+              <span className="text-slate-400 font-medium">Total Campaign Completion</span>
+              <span className="font-mono text-cyan-400 font-bold">{progressPercent}% Dispatched</span>
+            </div>
+            <Progress value={progressPercent} />
           </div>
-        </div>
-
-        {/* Overall Progress Bar */}
-        <div className="mt-5 space-y-1.5">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-400">Total Campaign Dispatch Progress</span>
-            <span className="font-mono text-cyan-400 font-bold">{progressPercent}% Completed</span>
-          </div>
-          <div className="w-full h-2.5 rounded-full bg-slate-950 border border-slate-800 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-cyan-400 to-emerald-400 transition-all duration-500"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* 5 Real-Time Status Metric Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         
         {/* Total Queued */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-lg">
+        <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-4 shadow-lg">
           <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
             <span>In Queue</span>
             <Clock className="w-4 h-4 text-indigo-400" />
           </div>
-          <div className="text-2xl font-bold text-white tracking-tight">
+          <div className="text-3xl font-extrabold text-white tracking-tight">
             {stats.queued.toLocaleString()}
           </div>
-          <div className="text-[10px] text-slate-500 mt-1">Pending dispatch</div>
+          <div className="text-[11px] text-slate-500 mt-1">Pending dispatch</div>
         </div>
 
         {/* Sent & Simulated */}
-        <div className="bg-emerald-950/20 border border-emerald-800/40 rounded-2xl p-4 shadow-lg">
+        <div className="rounded-2xl bg-emerald-950/20 border border-emerald-800/40 p-4 shadow-lg">
           <div className="flex items-center justify-between text-xs text-emerald-400 mb-1">
             <span>Sent Successfully</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-2xl font-bold text-emerald-300 tracking-tight">
+          <div className="text-3xl font-extrabold text-emerald-300 tracking-tight">
             {(stats.sent + stats.simulated).toLocaleString()}
           </div>
-          <div className="text-[10px] text-emerald-400/70 mt-1">
+          <div className="text-[11px] text-emerald-400/70 mt-1">
             {stats.simulated > 0 ? `(${stats.simulated} async simulated)` : 'Delivered'}
           </div>
         </div>
 
         {/* Processing */}
-        <div className="bg-cyan-950/20 border border-cyan-800/40 rounded-2xl p-4 shadow-lg">
+        <div className="rounded-2xl bg-cyan-950/20 border border-cyan-800/40 p-4 shadow-lg">
           <div className="flex items-center justify-between text-xs text-cyan-400 mb-1">
             <span>In Flight</span>
             <Activity className="w-4 h-4 text-cyan-400 animate-pulse" />
           </div>
-          <div className="text-2xl font-bold text-cyan-300 tracking-tight">
+          <div className="text-3xl font-extrabold text-cyan-300 tracking-tight">
             {stats.processing}
           </div>
-          <div className="text-[10px] text-cyan-400/70 mt-1">Active worker</div>
+          <div className="text-[11px] text-cyan-400/70 mt-1">Active worker</div>
         </div>
 
         {/* Failed */}
-        <div className="bg-rose-950/20 border border-rose-800/40 rounded-2xl p-4 shadow-lg">
+        <div className="rounded-2xl bg-rose-950/20 border border-rose-800/40 p-4 shadow-lg">
           <div className="flex items-center justify-between text-xs text-rose-400 mb-1">
             <span>Failed / Bounced</span>
             <AlertCircle className="w-4 h-4 text-rose-400" />
           </div>
-          <div className="text-2xl font-bold text-rose-300 tracking-tight">
+          <div className="text-3xl font-extrabold text-rose-300 tracking-tight">
             {stats.failed}
           </div>
-          <div className="text-[10px] text-rose-400/70 mt-1">Needs review</div>
+          <div className="text-[11px] text-rose-400/70 mt-1">Needs review</div>
         </div>
 
         {/* Campaign Duration */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-lg">
+        <div className="rounded-2xl bg-slate-900/80 border border-slate-800 p-4 shadow-lg">
           <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-            <span>Schedule Duration</span>
+            <span>Total Duration</span>
             <Calendar className="w-4 h-4 text-amber-400" />
           </div>
-          <div className="text-2xl font-bold text-amber-300 tracking-tight">
-            {calculation.totalDaysToRun} <span className="text-xs text-slate-400">Days</span>
+          <div className="text-3xl font-extrabold text-amber-300 tracking-tight">
+            {calculation.totalDaysToRun} <span className="text-xs text-slate-400 font-normal">Days</span>
           </div>
-          <div className="text-[10px] text-slate-500 mt-1">{calculation.emailsPerDay} mails/day</div>
+          <div className="text-[11px] text-slate-500 mt-1">{calculation.emailsPerDay} mails/day</div>
         </div>
 
       </div>
@@ -249,7 +269,7 @@ export default function QueueMetrics({
       {/* Manual Async Batch Sender Bar */}
       <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-950/40 via-slate-900/90 to-cyan-950/30 border border-indigo-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-cyan-300">
+          <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-cyan-300 shrink-0">
             <Zap className="w-5 h-5" />
           </div>
           <div>
@@ -269,7 +289,7 @@ export default function QueueMetrics({
                 key={num}
                 type="button"
                 onClick={() => setTriggerCount(num)}
-                className={`px-2.5 py-1 text-xs font-mono font-semibold rounded-lg transition-colors ${
+                className={`px-2.5 py-1 text-xs font-mono font-semibold rounded-lg transition-colors cursor-pointer ${
                   triggerCount === num
                     ? 'bg-indigo-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
@@ -280,33 +300,66 @@ export default function QueueMetrics({
             ))}
           </div>
 
-          <button
-            type="button"
-            onClick={() => onTriggerNext(triggerCount)}
-            disabled={isProcessingBatch || stats.queued === 0}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-cyan-500/20 hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          <Button
+            variant="glowing"
+            size="sm"
+            onClick={handleTrigger}
+            loading={isProcessingBatch}
+            loadingText="Triggering..."
+            disabled={stats.queued === 0}
+            className="text-xs"
           >
-            {isProcessingBatch ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Send className="w-3.5 h-3.5" />
-            )}
+            <Send className="w-3.5 h-3.5" />
             Trigger Next {triggerCount} Now
-          </button>
+          </Button>
 
           {onOpenQStashTest && (
-            <button
-              type="button"
+            <Button
+              variant="amber"
+              size="sm"
               onClick={onOpenQStashTest}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition-all hover:scale-[1.02]"
-              title="Schedule a 1-minute test job via Upstash QStash"
+              className="text-xs"
             >
-              <Zap className="w-3.5 h-3.5 text-amber-400" />
-              <span>⏱️ Test 1-Min QStash</span>
-            </button>
+              <Zap className="w-3.5 h-3.5 text-slate-950" />
+              <span>⏱️ Test 1-Min</span>
+            </Button>
           )}
         </div>
       </div>
+
+      {/* Confirmation Modal for Reset */}
+      <Dialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
+        <DialogContent size="sm">
+          <DialogHeader>
+            <DialogTitle>
+              <AlertTriangle className="w-5 h-5 text-rose-400" />
+              <span>Reset & Clear Campaign?</span>
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to reset this campaign? All pending email jobs, logs, and schedule state will be cleared.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsResetConfirmOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => handleAction('clear')}
+              loading={isActing}
+              loadingText="Resetting..."
+            >
+              Yes, Reset Campaign
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

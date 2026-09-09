@@ -12,6 +12,8 @@ import {
   Zap,
   Bot
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 interface NavbarProps {
   onOpenSettings?: () => void;
@@ -29,25 +31,27 @@ export default function Navbar({
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md">
+    <header className="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-slate-950/75 backdrop-blur-xl shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
         {/* Brand Logo */}
         <div className="flex items-center gap-3">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 p-0.5 shadow-lg shadow-indigo-500/20 group-hover:shadow-indigo-500/40 transition-all duration-300">
-              <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 via-indigo-600 to-cyan-400 p-0.5 shadow-lg shadow-indigo-500/25 group-hover:shadow-indigo-500/50 group-hover:scale-105 transition-all duration-300">
+              <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
                 <Send className="w-5 h-5 text-cyan-400 transform -rotate-12 group-hover:rotate-0 transition-transform duration-300" />
               </div>
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-bold text-lg text-white tracking-tight">JobApplier</span>
-                <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-md">
-                  AI + QUEUE
+                <span className="font-extrabold text-lg text-white tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-slate-300">
+                  JobApplier
                 </span>
+                <Badge variant="default" className="text-[10px] px-2 py-0.2">
+                  PRO AI
+                </Badge>
               </div>
-              <p className="text-xs text-slate-400 font-medium hidden sm:block">
+              <p className="text-[11px] text-slate-400 font-medium hidden sm:block">
                 LangChain GenAI & Async Batch Scheduler
               </p>
             </div>
@@ -55,13 +59,13 @@ export default function Navbar({
         </div>
 
         {/* Navigation Tabs */}
-        <nav className="flex items-center gap-1 sm:gap-2 bg-slate-900/90 border border-slate-800 p-1 rounded-xl">
+        <nav className="flex items-center gap-1 sm:gap-1.5 bg-slate-900/80 border border-slate-800/80 p-1 rounded-2xl backdrop-blur-md shadow-inner">
           <Link
             href="/"
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 ${
               pathname === '/'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-md shadow-indigo-600/30'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
             }`}
           >
             <Layers className="w-4 h-4" />
@@ -70,66 +74,72 @@ export default function Navbar({
 
           <Link
             href="/queue"
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 relative ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 relative ${
               pathname === '/queue'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-md shadow-indigo-600/30'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
             }`}
           >
             <Activity className="w-4 h-4" />
-            <span>2. Queue & Live Logs</span>
+            <span>2. Queue & Live Stream</span>
             {hasActiveCampaign && (
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping absolute -top-0.5 -right-0.5" />
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
             )}
           </Link>
         </nav>
 
         {/* Right Status & Settings */}
-        <div className="flex items-center gap-2.5 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Quick 1-Min QStash Schedule Button */}
           {onOpenQStashTest && (
-            <button
-              type="button"
+            <Button
+              variant="amber"
+              size="sm"
               onClick={onOpenQStashTest}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-indigo-600/20 hover:from-amber-500/30 hover:to-indigo-600/30 border border-amber-500/30 text-amber-300 text-xs font-bold shadow-md shadow-amber-500/10 transition-all hover:scale-[1.02]"
+              className="gap-1.5 shadow-amber-500/10"
               title="Schedule a 1-minute test job in Upstash QStash"
             >
-              <Zap className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-              <span className="hidden sm:inline">⏱️ Test 1-Min QStash</span>
-              <span className="sm:hidden">⏱️ 1-Min Test</span>
-            </button>
+              <Zap className="w-3.5 h-3.5 text-slate-950 animate-pulse" />
+              <span className="hidden sm:inline">⏱️ Test 1-Min</span>
+              <span className="sm:hidden">1-Min</span>
+            </Button>
           )}
 
           {/* Gemini AI Status Badge */}
-          <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-purple-950/60 to-indigo-950/60 border border-purple-500/30 text-purple-300">
-            <Bot className="w-3.5 h-3.5 text-cyan-300 animate-pulse" />
-            <span>AI Rotated</span>
+          <div className="hidden xl:flex items-center">
+            <Badge variant="purple" dot className="px-3 py-1 text-xs">
+              <Bot className="w-3.5 h-3.5 mr-0.5 text-purple-300" />
+              Gemini GenAI
+            </Badge>
           </div>
 
           {/* Mode Pill */}
-          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-900 border border-slate-800 text-slate-300">
+          <div className="hidden md:flex items-center">
             {isSimulated ? (
-              <>
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span className="text-slate-300">QStash Simulator</span>
-              </>
+              <Badge variant="warning" dot className="px-3 py-1 text-xs">
+                Simulator Mode
+              </Badge>
             ) : (
-              <>
-                <Zap className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-emerald-400">Upstash Active</span>
-              </>
+              <Badge variant="success" dot className="px-3 py-1 text-xs">
+                QStash Live
+              </Badge>
             )}
           </div>
 
           {/* Settings Button */}
           {onOpenSettings && (
-            <button
+            <Button
+              variant="outline"
+              size="icon-sm"
               onClick={onOpenSettings}
-              className="p-2 text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg transition-colors"
+              className="rounded-xl border-slate-700/80 hover:border-slate-500"
               title="AI & Queue Settings"
             >
-              <SettingsIcon className="w-4 h-4" />
-            </button>
+              <SettingsIcon className="w-4 h-4 text-slate-300" />
+            </Button>
           )}
         </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import ExcelUploader from '@/components/ExcelUploader';
 import LeadsTable from '@/components/LeadsTable';
@@ -12,15 +13,17 @@ import TestQStashModal from '@/components/TestQStashModal';
 import { Lead } from '@/types';
 import { ParseResult } from '@/lib/excel-parser';
 import { DEFAULT_BODY_TEMPLATE, DEFAULT_SUBJECT_TEMPLATE } from '@/lib/template-engine';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { 
   Sparkles, 
   Send, 
   Clock, 
-  Layers, 
   CheckCircle2, 
-  Calendar,
-  FileSpreadsheet,
-  ArrowRight
+  FileSpreadsheet, 
+  ArrowRight,
+  Zap,
+  Activity
 } from 'lucide-react';
 
 export default function LeadsPlannerPage() {
@@ -67,7 +70,7 @@ export default function LeadsPlannerPage() {
   const validLeadsCount = leads.filter((l) => l.status === 'valid').length;
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
       <Navbar
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenQStashTest={() => setIsQstashTestOpen(true)}
@@ -78,54 +81,65 @@ export default function LeadsPlannerPage() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         
         {/* Hero Section */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-950/80 via-slate-900 to-slate-900 border border-slate-800 p-8 shadow-2xl">
-          <div className="relative z-10 max-w-3xl space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Step 1: Ingest Leads & Configure Schedule</span>
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-950/80 via-slate-900 to-slate-900 border border-slate-800/80 p-8 sm:p-10 shadow-2xl backdrop-blur-xl">
+          <div className="absolute top-0 right-0 -mt-8 -mr-8 w-72 h-72 bg-gradient-to-bl from-cyan-500/15 via-indigo-600/10 to-transparent blur-3xl pointer-events-none rounded-full" />
+          
+          <div className="relative z-10 max-w-3xl space-y-4">
+            <div className="flex items-center gap-2">
+              <Badge variant="default" className="text-xs px-3 py-1 gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Step 1: Lead Ingestion & Calendar Planner</span>
+              </Badge>
+              <Badge variant="purple" className="text-xs px-3 py-1">
+                LangChain Google GenAI
+              </Badge>
             </div>
 
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
-              Cold Email Lead Parser &{' '}
+            <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight leading-tight">
+              Cold Outreach Parser &{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-cyan-400 to-emerald-400">
-                Async Batch Scheduler
+                Async Batch Engine
               </span>
             </h1>
 
-            <p className="text-sm text-slate-300 leading-relaxed">
-              Upload your lead spreadsheet to automatically parse contacts, customize dynamic templates, 
-              and figure out your optimal daily sending quotas, per-email delay intervals, and total campaign duration in days.
+            <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-2xl">
+              Ingest contacts from spreadsheets, compose dynamic variable templates, customize on-the-spot Gemini AI pitches, and let the smart calculator organize your daily delivery quotas and delay intervals.
             </p>
 
             {/* Quick Metrics Pill Bar */}
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-slate-300">
+            <div className="flex flex-wrap items-center gap-2.5 pt-2">
+              <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-950/90 border border-slate-800 text-xs text-slate-300 shadow-sm">
                 <FileSpreadsheet className="w-4 h-4 text-indigo-400" />
-                <span>Parsed Leads: <strong className="text-white">{leads.length.toLocaleString()}</strong></span>
+                <span>Parsed Contacts: <strong className="text-white font-bold">{leads.length.toLocaleString()}</strong></span>
               </div>
 
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-emerald-300">
+              <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-xs text-emerald-300 shadow-sm">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>Ready to Email: <strong className="text-white">{validLeadsCount.toLocaleString()}</strong></span>
+                <span>Ready to Email: <strong className="text-white font-bold">{validLeadsCount.toLocaleString()}</strong></span>
               </div>
 
-              <button
-                type="button"
+              <Button
+                variant="amber"
+                size="sm"
                 onClick={() => setIsQstashTestOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-xs font-bold text-amber-300 transition-colors"
+                className="gap-1.5 text-xs h-9"
               >
-                <Clock className="w-3.5 h-3.5 text-amber-400" />
+                <Clock className="w-3.5 h-3.5 text-slate-950" />
                 <span>Test 1-Min Upstash Queue</span>
-              </button>
+              </Button>
 
               {hasActiveCampaign && (
-                <a
-                  href="/queue"
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 text-xs font-medium hover:bg-indigo-600/30 transition-colors"
-                >
-                  <span>Active Campaign Running</span>
-                  <ArrowRight className="w-3 h-3" />
-                </a>
+                <Link href="/queue">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-xs h-9 border-indigo-500/40 text-indigo-300 hover:bg-indigo-950/40"
+                  >
+                    <Activity className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                    <span>Live Campaign Running</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </Button>
+                </Link>
               )}
             </div>
           </div>
@@ -161,7 +175,7 @@ export default function LeadsPlannerPage() {
           />
         </section>
 
-        {/* 4. Smart Campaign Scheduler & Calculator (Figure it out) */}
+        {/* 4. Smart Campaign Scheduler & Calculator */}
         <section>
           <CampaignScheduler
             leads={leads}

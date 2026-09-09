@@ -7,7 +7,12 @@ import DeliveryLogsTable from '@/components/DeliveryLogsTable';
 import SettingsModal from '@/components/SettingsModal';
 import TestQStashModal from '@/components/TestQStashModal';
 import { CampaignState, QueueJob } from '@/types';
-import { Activity, RefreshCw } from 'lucide-react';
+import { Activity, RefreshCw, AlertTriangle, Zap, ShieldAlert } from 'lucide-react';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function QueuePage() {
   const [campaign, setCampaign] = useState<CampaignState | null>(null);
@@ -22,6 +27,8 @@ export default function QueuePage() {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isQstashTestOpen, setIsQstashTestOpen] = useState<boolean>(false);
   const [isSimulated, setIsSimulated] = useState<boolean>(true);
+  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState<boolean>(false);
+  const [isCancellingAll, setIsCancellingAll] = useState(false);
 
   // Fetch campaign status and jobs
   const fetchStatus = useCallback(async () => {
@@ -97,31 +104,28 @@ export default function QueuePage() {
   };
 
   // Cancel all pending QStash tasks & database jobs
-  const [isCancellingAll, setIsCancellingAll] = useState(false);
   const handleCancelAll = async () => {
-    if (!confirm('Are you sure you want to cancel ALL pending QStash scheduled tasks and database jobs?')) {
-      return;
-    }
     try {
       setIsCancellingAll(true);
       const res = await fetch('/api/queue/cancel-all', { method: 'POST' });
       const data = await res.json();
       if (data.success) {
-        alert(data.message || 'All scheduled tasks cancelled successfully!');
+        toast.success(data.message || 'All scheduled tasks cancelled successfully!');
       } else {
-        alert(data.error || 'Failed to cancel all tasks.');
+        toast.error(data.error || 'Failed to cancel all tasks.');
       }
       await fetchStatus();
     } catch (e) {
       console.error('Cancel all error:', e);
-      alert('Error communicating with cancellation endpoint.');
+      toast.error('Error communicating with cancellation endpoint.');
     } finally {
       setIsCancellingAll(false);
+      setIsCancelConfirmOpen(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
       <Navbar
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenQStashTest={() => setIsQstashTestOpen(true)}
@@ -134,55 +138,79 @@ export default function QueuePage() {
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-2">
-              <Activity className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Step 2: Upstash Queue Monitor & Async Execution</span>
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant="default" className="text-xs px-3 py-1 gap-1.5">
+                <Activity className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Step 2: Upstash Queue Monitor & Async Stream</span>
+              </Badge>
+              <Badge variant="success" dot className="text-xs px-3 py-1">
+                Live Auto Sync
+              </Badge>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
               Queue & Delivery Stream Monitor
             </h1>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={handleCancelAll}
-              disabled={isCancellingAll}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-bold transition-all hover:scale-[1.02] disabled:opacity-50"
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setIsCancelConfirmOpen(true)}
+              className="gap-1.5 text-xs shadow-rose-500/10"
             >
-              <span>{isCancellingAll ? 'Cancelling...' : '🛑 Cancel All Tasks'}</span>
-            </button>
+              <ShieldAlert className="w-3.5 h-3.5" />
+              <span>Cancel All Scheduled Tasks</span>
+            </Button>
 
-            <button
-              type="button"
+            <Button
+              variant="amber"
+              size="sm"
               onClick={() => setIsQstashTestOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition-all hover:scale-[1.02]"
+              className="gap-1.5 text-xs shadow-amber-500/10"
             >
-              <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
+              <Zap className="w-3.5 h-3.5 text-slate-950" />
               <span>⏱️ Test 1-Min QStash</span>
-            </button>
+            </Button>
 
-            <button
-              type="button"
-              onClick={() => fetchStatus()}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 text-xs font-semibold transition-colors"
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                fetchStatus();
+                toast.info('Refreshed queue status');
+              }}
+              className="gap-1.5 text-xs"
             >
               <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
               Refresh Status
-            </button>
+            </Button>
           </div>
         </div>
 
         {/* 1. Queue Metrics & Controls */}
         <section>
-          <QueueMetrics
-            campaign={campaign}
-            onRefresh={fetchStatus}
-            onCampaignAction={handleCampaignAction}
-            onTriggerNext={handleTriggerNext}
-            onOpenQStashTest={() => setIsQstashTestOpen(true)}
-            isProcessingBatch={isProcessingBatch}
-          />
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-44 w-full rounded-2xl" />
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <Skeleton className="h-24 rounded-2xl" />
+                <Skeleton className="h-24 rounded-2xl" />
+                <Skeleton className="h-24 rounded-2xl" />
+                <Skeleton className="h-24 rounded-2xl" />
+                <Skeleton className="h-24 rounded-2xl" />
+              </div>
+            </div>
+          ) : (
+            <QueueMetrics
+              campaign={campaign}
+              onRefresh={fetchStatus}
+              onCampaignAction={handleCampaignAction}
+              onTriggerNext={handleTriggerNext}
+              onOpenQStashTest={() => setIsQstashTestOpen(true)}
+              isProcessingBatch={isProcessingBatch}
+            />
+          )}
         </section>
 
         {/* 2. Logs Table */}
@@ -222,6 +250,40 @@ export default function QueuePage() {
         onClose={() => setIsQstashTestOpen(false)}
         onScheduledSuccess={fetchStatus}
       />
+
+      {/* Cancel All Tasks Modal Confirmation */}
+      <Dialog open={isCancelConfirmOpen} onOpenChange={setIsCancelConfirmOpen}>
+        <DialogContent size="sm">
+          <DialogHeader>
+            <DialogTitle>
+              <AlertTriangle className="w-5 h-5 text-rose-400" />
+              <span>Cancel All Scheduled Tasks?</span>
+            </DialogTitle>
+            <DialogDescription>
+              This will purge all delayed messages from Upstash QStash cloud queue and cancel all pending database email jobs. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCancelConfirmOpen(false)}
+            >
+              No, Keep Scheduled
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleCancelAll}
+              loading={isCancellingAll}
+              loadingText="Cancelling All..."
+            >
+              Yes, Cancel All
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

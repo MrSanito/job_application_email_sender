@@ -12,9 +12,16 @@ import {
   AlertTriangle, 
   XCircle,
   Eye,
-  EyeOff
+  EyeOff,
+  Sparkles,
+  ExternalLink
 } from 'lucide-react';
 import { Lead } from '@/types';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -26,6 +33,7 @@ export default function LeadsTable({ leads, onSelectLeadForPreview }: LeadsTable
   const [statusFilter, setStatusFilter] = useState<'all' | 'valid' | 'invalid' | 'duplicate'>('all');
   const [page, setPage] = useState(1);
   const [isOpen, setIsOpen] = useState(true);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const pageSize = 8;
 
   const filteredLeads = useMemo(() => {
@@ -52,192 +60,217 @@ export default function LeadsTable({ leads, onSelectLeadForPreview }: LeadsTable
 
   if (leads.length === 0) return null;
 
+  const handlePreview = (lead: Lead) => {
+    setSelectedLeadId(lead.id);
+    if (onSelectLeadForPreview) {
+      onSelectLeadForPreview(lead);
+    }
+  };
+
   return (
-    <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm shadow-xl">
-      {/* Header & Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+    <Card glass className="shadow-2xl overflow-hidden">
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-3">
-            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-              <Briefcase className="w-5 h-5 text-indigo-400" />
-              Lead Preview & Data Table
-            </h3>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono">
+          <CardTitle>
+            <Briefcase className="w-5 h-5 text-indigo-400" />
+            <span>Lead Preview & Validation Table</span>
+            <Badge variant="secondary" className="font-mono text-xs">
               {filteredLeads.length} leads
-            </span>
-          </div>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Preview, search and inspect leads extracted from your Excel workbook.
-          </p>
+            </Badge>
+          </CardTitle>
+          <CardDescription>
+            Search, filter, and inspect verified contacts before launching the campaign.
+          </CardDescription>
         </div>
 
-        {/* Toggle Collapse */}
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => setIsOpen(!isOpen)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 bg-slate-800/60 hover:bg-slate-800 rounded-lg transition-colors self-start md:self-auto"
+          className="text-xs"
         >
           {isOpen ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-          {isOpen ? 'Collapse Table' : 'Show Table'}
-        </button>
-      </div>
+          <span>{isOpen ? 'Collapse Table' : 'Expand Table'}</span>
+        </Button>
+      </CardHeader>
 
       {isOpen && (
-        <>
+        <CardContent className="space-y-4">
           {/* Filter & Search Bar */}
-          <div className="flex flex-col sm:flex-row gap-3 mb-4">
-            {/* Search input */}
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Input
                 type="text"
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                placeholder="Search by company, name, category, or email..."
-                className="w-full bg-slate-950/80 border border-slate-800 focus:border-indigo-500 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 outline-none transition-colors"
+                placeholder="Search by company, HR contact, category, or email..."
+                className="pl-10"
               />
             </div>
 
-            {/* Status Filter Tabs */}
-            <div className="flex items-center bg-slate-950/80 border border-slate-800 p-1 rounded-xl gap-1">
-              {(['all', 'valid', 'duplicate', 'invalid'] as const).map((st) => (
-                <button
-                  key={st}
-                  type="button"
-                  onClick={() => {
-                    setStatusFilter(st);
-                    setPage(1);
-                  }}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium capitalize transition-colors ${
-                    statusFilter === st
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  {st}
-                </button>
-              ))}
+            {/* Filter Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+              <Button
+                variant={statusFilter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => { setStatusFilter('all'); setPage(1); }}
+                className="text-xs"
+              >
+                All ({leads.length})
+              </Button>
+              <Button
+                variant={statusFilter === 'valid' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => { setStatusFilter('valid'); setPage(1); }}
+                className={`text-xs ${statusFilter === 'valid' ? 'bg-emerald-600 hover:bg-emerald-500' : 'text-emerald-300'}`}
+              >
+                Valid ({leads.filter((l) => l.status === 'valid').length})
+              </Button>
+              <Button
+                variant={statusFilter === 'duplicate' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => { setStatusFilter('duplicate'); setPage(1); }}
+                className={`text-xs ${statusFilter === 'duplicate' ? 'bg-amber-600 hover:bg-amber-500' : 'text-amber-300'}`}
+              >
+                Duplicates ({leads.filter((l) => l.status === 'duplicate').length})
+              </Button>
+              <Button
+                variant={statusFilter === 'invalid' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => { setStatusFilter('invalid'); setPage(1); }}
+                className={`text-xs ${statusFilter === 'invalid' ? 'bg-rose-600 hover:bg-rose-500' : 'text-rose-300'}`}
+              >
+                Invalid ({leads.filter((l) => l.status === 'invalid').length})
+              </Button>
             </div>
           </div>
 
-          {/* Table Container */}
-          <div className="overflow-x-auto rounded-xl border border-slate-800/80 bg-slate-950/40">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-900/90 text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[10px]">
-                <tr>
-                  <th className="py-3 px-4">#</th>
-                  <th className="py-3 px-4">Company / Lead</th>
-                  <th className="py-3 px-4">Category / Industry</th>
-                  <th className="py-3 px-4">Email</th>
-                  <th className="py-3 px-4">Location</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/50 text-slate-300">
-                {paginatedLeads.map((lead, idx) => {
+          {/* Table */}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12">#</TableHead>
+                <TableHead>Company & Location</TableHead>
+                <TableHead>Contact / HR</TableHead>
+                <TableHead>Email Address</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedLeads.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-10 text-slate-400">
+                    No leads matching criteria found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedLeads.map((lead, idx) => {
                   const globalIdx = (currentPage - 1) * pageSize + idx + 1;
+                  const isSelected = selectedLeadId === lead.id;
+
                   return (
-                    <tr
+                    <TableRow
                       key={lead.id}
-                      className="hover:bg-slate-900/50 transition-colors duration-150 group"
+                      className={isSelected ? 'bg-indigo-950/30 border-l-2 border-indigo-500' : ''}
                     >
-                      <td className="py-3 px-4 font-mono text-slate-500">{globalIdx}</td>
-                      <td className="py-3 px-4">
-                        <div className="font-medium text-white group-hover:text-indigo-300 transition-colors">
-                          {lead.name}
+                      <TableCell className="font-mono text-xs text-slate-400">
+                        {globalIdx}
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-bold text-white flex items-center gap-1.5">
+                          <Building className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                          <span>{lead.company || 'Unknown Company'}</span>
                         </div>
-                        {lead.company && lead.company !== lead.name && (
-                          <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                            <Building className="w-3 h-3" />
-                            {lead.company}
-                          </div>
+                        {lead.catName && (
+                          <div className="text-xs text-slate-400">{lead.catName}</div>
                         )}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] bg-indigo-950/40 text-indigo-300 border border-indigo-800/30">
-                          {lead.catName || 'General'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 font-mono text-slate-300">
+                        {lead.address && (
+                          <div className="text-[11px] text-slate-500 truncate max-w-xs">{lead.address}</div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm font-medium text-slate-200">{lead.name || 'HR Recruiter'}</div>
+                        {lead.phone && <div className="text-xs text-slate-400">{lead.phone}</div>}
+                      </TableCell>
+                      <TableCell>
                         {lead.email ? (
-                          <span className="text-cyan-300">{lead.email}</span>
-                        ) : (
-                          <span className="text-slate-600 italic">No email detected</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-slate-400">
-                        {lead.address || '—'}
-                      </td>
-                      <td className="py-3 px-4">
-                        {lead.status === 'valid' && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-950/50 text-emerald-400 border border-emerald-800/40">
-                            <Check className="w-3 h-3" /> Valid
+                          <span className="font-mono text-xs text-indigo-300 bg-indigo-950/40 px-2 py-1 rounded-md border border-indigo-800/40">
+                            {lead.email}
                           </span>
+                        ) : (
+                          <span className="text-xs text-rose-400 italic">No Email Found</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {lead.status === 'valid' && (
+                          <Badge variant="success" dot>Valid Lead</Badge>
                         )}
                         {lead.status === 'duplicate' && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-950/50 text-amber-400 border border-amber-800/40">
-                            <AlertTriangle className="w-3 h-3" /> Duplicate
-                          </span>
+                          <Badge variant="warning" dot>Duplicate</Badge>
                         )}
                         {lead.status === 'invalid' && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-950/50 text-rose-400 border border-rose-800/40">
-                            <XCircle className="w-3 h-3" /> Invalid
-                          </span>
+                          <Badge variant="destructive" dot>Invalid</Badge>
                         )}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        {onSelectLeadForPreview && (
-                          <button
-                            type="button"
-                            onClick={() => onSelectLeadForPreview(lead)}
-                            className="text-xs text-indigo-400 hover:text-indigo-300 hover:underline"
-                          >
-                            Preview Email
-                          </button>
-                        )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant={isSelected ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => handlePreview(lead)}
+                          className="text-xs"
+                        >
+                          <Sparkles className="w-3 h-3 text-cyan-400" />
+                          <span>{isSelected ? 'Selected' : 'Live Preview'}</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
                   );
-                })}
-              </tbody>
-            </table>
-          </div>
+                })
+              )}
+            </TableBody>
+          </Table>
 
           {/* Pagination */}
-          <div className="flex items-center justify-between mt-4 text-xs text-slate-400">
-            <div>
-              Showing {(currentPage - 1) * pageSize + 1} to{' '}
-              {Math.min(currentPage * pageSize, filteredLeads.length)} of {filteredLeads.length} leads
-            </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2">
+              <div className="text-xs text-slate-400">
+                Showing <strong className="text-white">{(currentPage - 1) * pageSize + 1}</strong> to{' '}
+                <strong className="text-white">
+                  {Math.min(currentPage * pageSize, filteredLeads.length)}
+                </strong>{' '}
+                of <strong className="text-white">{filteredLeads.length}</strong> leads
+              </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="p-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="font-mono text-slate-300">
-                Page {currentPage} of {totalPages}
-              </span>
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="p-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <div className="px-3 text-xs font-semibold text-slate-300">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
-          </div>
-        </>
+          )}
+        </CardContent>
       )}
-    </div>
+    </Card>
   );
 }
