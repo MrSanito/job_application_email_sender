@@ -47,9 +47,8 @@ export function getRedisClient(): Redis | null {
   return new Redis({ url, token });
 }
 
-/**
- * Publish a background asynchronous email dispatch job to Upstash QStash
- */
+export const MAX_QSTASH_DELAY_SECONDS = 604800; // 7 days (Upstash QStash maxDelay quota)
+
 export async function scheduleQStashJob(
   job: QueueJob,
   destinationUrl: string,
@@ -63,6 +62,16 @@ export async function scheduleQStashJob(
     return {
       success: true,
       messageId: `sim-qstash-${job.id}-${Date.now()}`,
+      isSimulated: true,
+    };
+  }
+
+  // If delay exceeds QStash's 7-day quota limit (604,800 seconds), keep it in MongoDB/Redis
+  // It will be dispatched when the rolling schedule window reaches it
+  if (delaySeconds > MAX_QSTASH_DELAY_SECONDS) {
+    return {
+      success: true,
+      messageId: `future-scheduled-${job.id}`,
       isSimulated: true,
     };
   }

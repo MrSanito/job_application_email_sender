@@ -126,7 +126,7 @@ export async function saveCampaignState(campaign: CampaignState): Promise<void> 
           calculation: campaign.calculation,
           stats: campaign.stats,
         },
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: 'after' }
       );
 
       if (campaign.jobs && campaign.jobs.length > 0) {

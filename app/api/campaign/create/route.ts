@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeCampaign, saveCampaignState } from '@/lib/campaign-store';
 import { calculateCampaignPlan } from '@/lib/scheduler-calc';
-import { scheduleQStashJob, getAppSettings } from '@/lib/upstash';
+import { scheduleQStashJob, getAppSettings, MAX_QSTASH_DELAY_SECONDS } from '@/lib/upstash';
 import { CampaignConfig, Lead } from '@/types';
 
 export async function POST(req: NextRequest) {
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     const settings = getAppSettings();
     const webhookUrl = `${settings.webhookBaseUrl}/api/queue/dispatch`;
 
-    // If QStash is active, register all campaign jobs to QStash email_job_queue with true calendar delays
+    // If QStash is active, register campaign jobs within the 7-day window to QStash email_job_queue
     if (settings.qstashToken) {
       const now = Date.now();
       
@@ -37,16 +37,20 @@ export async function POST(req: NextRequest) {
         // True delay: difference between current moment and scheduled calendar time
         const delaySeconds = Math.max(0, Math.round((targetTimeMs - now) / 1000));
         
-        const qstashRes = await scheduleQStashJob(
-          job,
-          webhookUrl,
-          delaySeconds,
-          settings.qstashToken,
-          'email_job_queue'
-        );
+        // Upstash QStash maxDelay quota is 7 days (604,800s).
+        // Only publish jobs within the 7-day window to prevent HTTP 412 quota errors
+        if (delaySeconds <= MAX_QSTASH_DELAY_SECONDS) {
+          const qstashRes = await scheduleQStashJob(
+            job,
+            webhookUrl,
+            delaySeconds,
+            settings.qstashToken,
+            'email_job_queue'
+          );
 
-        if (qstashRes.messageId) {
-          job.qStashMessageId = qstashRes.messageId;
+          if (qstashRes.messageId) {
+            job.qStashMessageId = qstashRes.messageId;
+          }
         }
       }
 
