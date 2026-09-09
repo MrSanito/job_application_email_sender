@@ -39,14 +39,14 @@ export async function POST(req: NextRequest) {
     let finalHtml = bodyHtml || '';
     let aiModelUsed = 'Template Engine';
 
-    // DYNAMIC ON-THE-SPOT EMAIL GENERATION WITH LANGCHAIN & GOOGLE GEN AI
+    // DYNAMIC ON-THE-SPOT EMAIL GENERATION WITH LANGCHAIN & MISTRAL AI + TAVILY
     if (useAi || !bodyHtml) {
       try {
         const aiResult = await generateOnTheSpotEmail(lead, customPrompt, candidateProfile);
         finalSubject = aiResult.subject;
         finalHtml = aiResult.htmlBody;
         if (aiResult.isAiGenerated) {
-          aiModelUsed = aiResult.modelUsed || 'Google Gemini AI (LangChain)';
+          aiModelUsed = aiResult.modelUsed || 'Mistral AI (LangChain)';
         }
       } catch (aiErr) {
         console.warn('AI generation error in dispatch, continuing with template:', aiErr);
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
         subject: finalSubject,
         htmlBody: finalHtml,
         modelUsed: aiModelUsed,
-        isAiGenerated: aiModelUsed.includes('gemini') || aiModelUsed.includes('Google'),
+        isAiGenerated: aiModelUsed.toLowerCase().includes('mistral'),
       });
 
       // Asynchronously advance the rolling 7-day window for multi-week campaigns

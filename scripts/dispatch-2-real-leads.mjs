@@ -66,7 +66,7 @@ async function dispatch2RealLeads() {
       customInstructions: 'Short, honest outreach expressing genuine interest in joining their engineering team. Mention attached resume.',
       candidateName: 'Vishal Nishad',
       candidateRole: 'Full-Stack Developer',
-      candidateSkills: 'Next.js, React, Node.js, Express, TypeScript, PostgreSQL, Prisma, Redis, BullMQ, MongoDB, Gemini API, Socket.io',
+      candidateSkills: 'Next.js, React, Node.js, Express, TypeScript, PostgreSQL, Prisma, Redis, BullMQ, MongoDB, Mistral AI, Socket.io',
       candidatePortfolio: 'https://github.com/MrSanito',
     }
   };

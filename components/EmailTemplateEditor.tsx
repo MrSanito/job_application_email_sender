@@ -229,8 +229,8 @@ export default function EmailTemplateEditor({
             <div className="flex items-center gap-3">
               <Sparkles className="w-5 h-5 text-indigo-400 animate-spin" />
               <div>
-                <h4 className="font-bold text-sm text-white">Google Gemini Generating Personalized Pitch...</h4>
-                <p className="text-xs text-slate-400">Synthesizing lead company info with candidate profile</p>
+                <h4 className="font-bold text-sm text-white">Mistral AI + Tavily Generating Personalized Pitch...</h4>
+                <p className="text-xs text-slate-400">Researching company on Tavily and synthesizing pitch with Mistral AI</p>
               </div>
             </div>
             <Skeleton className="h-10 w-full" />

@@ -3,7 +3,8 @@ import path from 'path';
 import mongoose from 'mongoose';
 import nodemailer from 'nodemailer';
 import { Client as QStashClient } from '@upstash/qstash';
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { ChatMistralAI } from '@langchain/mistralai';
+import { tavily } from '@tavily/core';
 import { HumanMessage } from '@langchain/core/messages';
 
 // Load .env.local manually
@@ -49,34 +50,41 @@ async function main() {
     }
   }
 
-  // 2. GOOGLE GEMINI API KEYS (Multi-Key Pool)
-  console.log('2️⃣  GOOGLE GEMINI API KEYS:');
-  const keys = [
-    { name: 'GOOGLE_API_KEY (Key 1)', val: process.env.GOOGLE_API_KEY },
-    { name: 'GOOGLE_API_KEY2 (Key 2)', val: process.env.GOOGLE_API_KEY2 },
-  ];
-
-  for (const k of keys) {
-    if (!k.val) {
-      console.log(`  ⚠️  ${k.name}: Not configured in .env.local`);
-      continue;
-    }
-    const masked = `${k.val.slice(0, 6)}...${k.val.slice(-4)}`;
+  // 2. MISTRAL AI API KEY & TAVILY INTELLIGENCE
+  console.log('2️⃣  MISTRAL AI & TAVILY WEB SEARCH:');
+  const mistralKey = process.env.MISTRAL_API_KEY;
+  if (!mistralKey) {
+    console.log('  ⚠️  MISTRAL_API_KEY: Not configured in .env.local');
+  } else {
+    const masked = `${mistralKey.slice(0, 6)}...${mistralKey.slice(-4)}`;
     try {
-      const llm = new ChatGoogleGenerativeAI({
-        apiKey: k.val,
-        model: 'gemini-2.5-flash',
-        maxOutputTokens: 25,
+      const llm = new ChatMistralAI({
+        apiKey: mistralKey,
+        model: 'open-mistral-7b',
+        maxTokens: 25,
         temperature: 0.2,
       });
-      const res = await llm.invoke([new HumanMessage('Say "Gemini Key Online!" in 3 words.')]);
+      const res = await llm.invoke([new HumanMessage('Say "Mistral Online!" in 3 words.')]);
       const reply = String(res.content || '').trim();
-      console.log(`  ✅ ${k.name} [${masked}]: ACTIVE & WORKING -> "${reply}"`);
+      console.log(`  ✅ Mistral AI [${masked}]: ACTIVE & WORKING -> "${reply}"`);
     } catch (err) {
-      console.log(`  ❌ ${k.name} [${masked}]: Failed -> ${err.message}`);
+      console.log(`  ❌ Mistral AI [${masked}]: Failed -> ${err.message}`);
     }
   }
-  console.log('');
+
+  const tavilyKey = process.env.TAVILY_API_KEY;
+  if (!tavilyKey) {
+    console.log('  ⚠️  TAVILY_API_KEY: Not configured in .env.local\n');
+  } else {
+    const masked = `${tavilyKey.slice(0, 6)}...${tavilyKey.slice(-4)}`;
+    try {
+      const tvly = tavily({ apiKey: tavilyKey });
+      const searchRes = await tvly.search('Vercel company about mission', { maxResults: 1 });
+      console.log(`  ✅ Tavily Search [${masked}]: ACTIVE & WORKING -> Found: "${searchRes.results?.[0]?.title || 'OK'}"\n`);
+    } catch (err) {
+      console.log(`  ❌ Tavily Search [${masked}]: Failed -> ${err.message}\n`);
+    }
+  }
 
   // 3. UPSTASH QSTASH ASYNC QUEUE
   console.log('3️⃣  UPSTASH QSTASH QUEUE:');

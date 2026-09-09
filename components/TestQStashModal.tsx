@@ -160,7 +160,7 @@ export default function TestQStashModal({
               <Bot className="w-4 h-4 text-cyan-400 shrink-0" />
               <div>
                 <span className="text-slate-500 block text-[10px]">Model Rotation</span>
-                <span className="text-white font-bold">Gemini 2.5 & 3.5</span>
+                <span className="text-white font-bold">Mistral AI</span>
               </div>
             </div>
 
@@ -211,7 +211,7 @@ export default function TestQStashModal({
                       ⚡ QStash Firing Callback Webhook!
                     </div>
                     <p className="text-xs text-slate-300">
-                      Generating dynamic email with Gemini AI rotation & sending...
+                      Generating dynamic email with Mistral AI & Tavily research...
                     </p>
                   </div>
                 )}

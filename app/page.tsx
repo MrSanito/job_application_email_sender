@@ -91,7 +91,7 @@ export default function LeadsPlannerPage() {
                 <span>Step 1: Lead Ingestion & Calendar Planner</span>
               </Badge>
               <Badge variant="purple" className="text-xs px-3 py-1">
-                LangChain Google GenAI
+                Mistral AI + Tavily Web Intelligence
               </Badge>
             </div>
 
@@ -103,7 +103,7 @@ export default function LeadsPlannerPage() {
             </h1>
 
             <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-2xl">
-              Ingest contacts from spreadsheets, compose dynamic variable templates, customize on-the-spot Gemini AI pitches, and let the smart calculator organize your daily delivery quotas and delay intervals.
+              Ingest contacts from spreadsheets, compose dynamic variable templates, customize on-the-spot Mistral AI pitches, and let the smart calculator organize your daily delivery quotas and delay intervals.
             </p>
 
             {/* Quick Metrics Pill Bar */}

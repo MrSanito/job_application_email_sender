@@ -1,5 +1,4 @@
 import { ChatMistralAI } from '@langchain/mistralai';
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { tavily } from '@tavily/core';
 import { Lead } from '@/types';
@@ -74,7 +73,7 @@ export async function searchCompanyContextWithTavily(
 }
 
 /**
- * Parse and categorize Mistral / Gemini API errors
+ * Parse and categorize Mistral AI API errors
  */
 export function parseApiError(err: unknown): {
   code: number | string;
@@ -204,70 +203,6 @@ export function getMistralModel(
     });
   } catch (error) {
     console.error(`Error initializing ChatMistralAI (${modelName}):`, error);
-    return null;
-  }
-}
-
-/**
- * Collect all configured Google/Gemini API keys (secondary fallback)
- */
-export function getAllGeminiApiKeys(): string[] {
-  const candidates: string[] = [];
-  const commaLists = [
-    process.env.GOOGLE_API_KEYS,
-    process.env.GEMINI_API_KEYS,
-    process.env.GOOGLE_API_KEY_LIST,
-    process.env.GEMINI_API_KEY_LIST,
-  ];
-  for (const list of commaLists) {
-    if (list && typeof list === 'string') {
-      const parts = list.split(/[,;\n]/).map((k) => k.trim());
-      candidates.push(...parts);
-    }
-  }
-
-  for (let i = 1; i <= 25; i++) {
-    candidates.push(
-      process.env[`GOOGLE_API_KEY${i}`] || '',
-      process.env[`GOOGLE_API_KEY_${i}`] || '',
-      process.env[`GEMINI_API_KEY${i}`] || '',
-      process.env[`GEMINI_API_KEY_${i}`] || ''
-    );
-  }
-
-  candidates.push(
-    process.env.GOOGLE_API_KEY || '',
-    process.env.GEMINI_API_KEY || '',
-    process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
-  );
-
-  const clean = candidates
-    .map((k) => (typeof k === 'string' ? k.trim().replace(/^["']|["']$/g, '') : ''))
-    .filter((k) => k.length > 10);
-
-  return Array.from(new Set(clean));
-}
-
-export const GEMINI_ROTATION_MODELS: string[] = [
-  'gemini-2.5-flash',
-  'gemini-3.5-flash-lite',
-  'gemini-flash-lite-latest',
-];
-
-export function getGeminiModel(
-  apiKey: string,
-  modelName: string = 'gemini-2.5-flash',
-  temperature: number = 0.8
-): ChatGoogleGenerativeAI | null {
-  if (!apiKey) return null;
-  try {
-    return new ChatGoogleGenerativeAI({
-      model: modelName,
-      apiKey,
-      temperature,
-      maxRetries: 2,
-    });
-  } catch {
     return null;
   }
 }
@@ -440,7 +375,7 @@ Candidate Profile:
       .replace(/https?:\/\/(?:www\.)?linkedin\.com\/[^\s<>"']*/gi, '');
   };
 
-  // 2. TRY MISTRAL AI MODELS (PRIMARY ENGINE)
+  // 2. TRY MISTRAL AI MODELS (ONLY ENGINE)
   const mistralKeys = getAllMistralApiKeys();
   const keysToTry = apiKeyOverride ? [apiKeyOverride] : mistralKeys;
   const modelsToTry = modelOverride ? [modelOverride] : MISTRAL_ROTATION_MODELS;
@@ -494,45 +429,7 @@ Candidate Profile:
     }
   }
 
-  // 3. FALLBACK TO GEMINI (IF MISTRAL FAILED OR NO MISTRAL KEY CONFIGURED)
-  const geminiKeys = getAllGeminiApiKeys();
-  if (geminiKeys.length > 0) {
-    for (const gKey of geminiKeys) {
-      for (const gModel of GEMINI_ROTATION_MODELS) {
-        const gInstance = getGeminiModel(gKey, gModel, dynamicTemperature);
-        if (!gInstance) continue;
-
-        try {
-          const response = await gInstance.invoke([
-            new SystemMessage(systemPrompt),
-            new HumanMessage(userPrompt),
-          ]);
-
-          let rawText = String(response.content || '').trim();
-          if (rawText.startsWith('```')) {
-            rawText = rawText.replace(/^```(?:json)?\n?/i, '').replace(/```$/i, '').trim();
-          }
-
-          const parsed = JSON.parse(rawText);
-          return {
-            subject: sanitizeUrlReferences(parsed.subject || `Full-Stack Developer (MERN + Gen AI) — ${companyName}`),
-            htmlBody: sanitizeUrlReferences(parsed.htmlBody || `<p>${parsed.textBody?.replace(/\n/g, '<br/>')}</p>`),
-            textBody: sanitizeUrlReferences(parsed.textBody || parsed.htmlBody?.replace(/<[^>]*>?/gm, '')),
-            isAiGenerated: true,
-            modelUsed: `Google Gemini (${gModel}) + Tavily Search [${archetype.name}]`,
-            keyUsed: 'Gemini Fallback',
-            companyContext: tavilyResult.context,
-            tavilyQuery: tavilyResult.query,
-            latencyMs: Date.now() - startTime,
-          };
-        } catch (gErr) {
-          console.warn(`[Gemini Fallback Error] on model "${gModel}":`, gErr);
-        }
-      }
-    }
-  }
-
-  // 4. FINAL FALLBACK TO DYNAMIC TEMPLATE ENGINE
+  // 3. FINAL SAFETY FALLBACK TO TEMPLATE ENGINE (ONLY IF MISTRAL OFFLINE)
   const fallbackTpl = getRandomFallbackTemplate();
   const renderedSubject = renderTemplate(fallbackTpl.subject, lead);
   const renderedBody = renderTemplate(fallbackTpl.body, lead);
@@ -614,25 +511,5 @@ export async function testMistralConnection(): Promise<{
     message,
     sampleResponse,
     tavilySnippet,
-  };
-}
-
-/**
- * Backward compatibility alias for system health check
- */
-export async function testGeminiConnection(): Promise<{
-  success: boolean;
-  totalKeys: number;
-  totalModels: number;
-  rotationModels: string[];
-  message: string;
-}> {
-  const mistralRes = await testMistralConnection();
-  return {
-    success: mistralRes.success,
-    totalKeys: mistralRes.totalKeys,
-    totalModels: mistralRes.workingModels.length,
-    rotationModels: mistralRes.workingModels,
-    message: mistralRes.message,
   };
 }

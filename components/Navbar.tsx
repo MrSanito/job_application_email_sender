@@ -108,11 +108,11 @@ export default function Navbar({
             </Button>
           )}
 
-          {/* Gemini AI Status Badge */}
+          {/* Mistral AI Status Badge */}
           <div className="hidden xl:flex items-center">
             <Badge variant="purple" dot className="px-3 py-1 text-xs">
               <Bot className="w-3.5 h-3.5 mr-0.5 text-purple-300" />
-              Gemini GenAI
+              Mistral AI
             </Badge>
           </div>
 

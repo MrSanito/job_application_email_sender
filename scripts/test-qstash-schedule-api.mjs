@@ -28,7 +28,7 @@ async function testEndpoint() {
     catName: 'Full-Stack Developer',
     website: 'https://upstash.com',
     delaySeconds: 60,
-    customInstructions: 'Testing 1-minute QStash delay delivery with Gemini model rotation and resume attachment.'
+    customInstructions: 'Testing 1-minute QStash delay delivery with Mistral AI model rotation and resume attachment.'
   };
 
   try {

@@ -66,7 +66,7 @@ async function testLiveOutreach() {
       customInstructions: 'Conduct deep research on their product and tech stack. Detail 2-3 specific technical contributions (e.g. Next.js App Router performance, LangChain AI pipelines, resilient async background queues with Upstash & MongoDB). Make it sound 100% human and personal.',
       candidateName: 'Vishal',
       candidateRole: 'Senior Full Stack & AI Engineer',
-      candidateSkills: 'Next.js, TypeScript, Python, Gemini LangChain, Upstash/Redis, Microservices, MongoDB',
+      candidateSkills: 'Next.js, TypeScript, Python, Mistral AI LangChain, Upstash/Redis, Microservices, MongoDB',
       candidatePortfolio: 'https://github.com/vishal',
     }
   };

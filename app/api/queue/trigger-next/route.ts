@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       let isAiGenerated = false;
       let modelUsed = 'Template Engine';
 
-      // On-the-spot Dynamic Generation with Google Gen AI & LangChain
+      // On-the-spot Dynamic Generation with Mistral AI & LangChain
       if (useAi) {
         try {
           const aiGen = await generateOnTheSpotEmail(
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
             htmlToSend = aiGen.htmlBody;
             textToSend = aiGen.textBody;
             isAiGenerated = true;
-            modelUsed = aiGen.modelUsed || 'Google Gemini AI (LangChain)';
+            modelUsed = aiGen.modelUsed || 'Mistral AI (LangChain)';
             job.subject = aiGen.subject;
             job.bodyHtml = aiGen.htmlBody;
           }

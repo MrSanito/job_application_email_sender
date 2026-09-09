@@ -66,11 +66,11 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
   };
 
-  const runTest = async (action: 'smtp' | 'gemini' | 'mistral' | 'mongo' | 'qstash') => {
+  const runTest = async (action: 'smtp' | 'mistral' | 'mongo' | 'qstash') => {
     try {
       setTestingService(action);
       if (action === 'smtp') setTestStatus(null);
-      if (action === 'mistral' || action === 'gemini') setMistralTestStatus(null);
+      if (action === 'mistral') setMistralTestStatus(null);
       if (action === 'mongo') setMongoTestStatus(null);
       if (action === 'qstash') setQstashTestStatus(null);
 
@@ -86,8 +86,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         if (data.smtp?.success) toast.success('SMTP server connection verified!');
         else toast.error(data.smtp?.message || 'SMTP test failed');
       }
-      if (action === 'mistral' || action === 'gemini') {
-        const mStatus = data.mistral || data.gemini;
+      if (action === 'mistral') {
+        const mStatus = data.mistral;
         setMistralTestStatus(mStatus);
         if (mStatus?.success) toast.success('Mistral AI & Tavily Search verified!');
         else toast.error(mStatus?.message || 'Mistral test failed');
@@ -106,7 +106,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       const msg = err instanceof Error ? err.message : 'Test failed';
       toast.error(msg);
       if (action === 'smtp') setTestStatus({ success: false, message: msg });
-      if (action === 'mistral' || action === 'gemini') setMistralTestStatus({ success: false, message: msg });
+      if (action === 'mistral') setMistralTestStatus({ success: false, message: msg });
       if (action === 'mongo') setMongoTestStatus({ success: false, message: msg });
       if (action === 'qstash') setQstashTestStatus({ success: false, message: msg });
     } finally {
