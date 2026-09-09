@@ -232,26 +232,26 @@ export const ANTI_SPAM_ARCHETYPES: AntiSpamStructureArchetype[] = [
     structuralPattern: 'Direct intro -> MERN + AI voice systems handling ~1,000 calls/day on Pipecat + BullMQ/Redis -> Real-time multiplayer platform with DPoP auth -> Inquire about [Company] openings -> GitHub link & signoff.',
     openingStyle: 'Natural greeting by first name (or "Hi there," / "Hello," if no individual name). Direct opener introducing role.',
     bodyStyle: 'Highlight production AI voice agent handling ~1,000 calls/day across clients (sales and HR hiring pipelines) on Pipecat with real-time STT/TTS and Node/BullMQ/Redis queue backend, plus real-time multiplayer platform with DPoP auth.',
-    ctaStyle: 'Ask if there are any full-stack or AI/voice engineering openings on their team right now.',
-    subjectGuidance: 'e.g. "Full-Stack / AI Voice Developer — open to opportunities" or "Full-Stack / AI Voice Developer — [Company]"',
+    ctaStyle: 'Ask if there are any full-stack or Gen AI engineering openings on their team right now.',
+    subjectGuidance: 'e.g. "Full-Stack Developer (MERN + Gen AI) — open to opportunities" or "Full-Stack Developer (MERN + Gen AI) — [Company]"',
   },
   {
     id: 'ultra-concise-builder',
     name: 'Ultra-Concise 3-Sentence Note',
-    structuralPattern: 'Tight 3-sentence note: Direct introduction -> Core production achievements (~1,000 calls/day voice agent & DPoP multiplayer auth) -> Check for engineering openings at [Company] + GitHub.',
+    structuralPattern: 'Tight 3-sentence note: Direct introduction -> Core production achievements (~1,000 calls/day voice agent & DPoP multiplayer auth) -> Check for Gen AI / full-stack openings at [Company] + GitHub.',
     openingStyle: 'Cut straight to the point without introductory throat-clearing.',
     bodyStyle: 'State background crisply: full-stack developer (MERN + AI voice systems) who built ~1k calls/day Pipecat voice pipelines and secure multiplayer systems.',
-    ctaStyle: 'Check if there are any open full-stack or AI/voice roles at [Company].',
-    subjectGuidance: 'e.g. "Full-Stack / AI Voice Developer — open to opportunities" or "Full-stack / voice AI openings at [Company]?"',
+    ctaStyle: 'Check if there are any open full-stack or Gen AI roles at [Company].',
+    subjectGuidance: 'e.g. "Full-Stack Developer (MERN + Gen AI) — open to opportunities" or "Full-stack / Gen AI openings at [Company]?"',
   },
   {
     id: 'systems-architecture',
     name: 'Systems & Real-Time Infrastructure Angle',
-    structuralPattern: 'Systems & velocity framing: Full-stack + AI voice engineer -> Scaling audio pipelines with Pipecat, BullMQ, Redis, and DPoP session auth -> Reaching out regarding [Company] opportunities.',
+    structuralPattern: 'Systems & velocity framing: Full-stack + Gen AI / voice engineer -> Scaling audio pipelines with Pipecat, BullMQ, Redis, and DPoP session auth -> Reaching out regarding [Company] opportunities.',
     openingStyle: 'Friendly, peer-to-peer technical greeting.',
     bodyStyle: 'Focus on shipping end-to-end: real-time voice agent infrastructure (Pipecat, STT/TTS, BullMQ/Redis) and resilient MERN backend architectures.',
-    ctaStyle: 'Inquire if their engineering team is currently looking for full-stack or AI/voice talent.',
-    subjectGuidance: 'e.g. "Full-Stack / AI Voice Developer — [Company]" or "[Company] + Vishal (Full-Stack / Voice AI)"',
+    ctaStyle: 'Inquire if their engineering team is currently looking for full-stack or Gen AI talent.',
+    subjectGuidance: 'e.g. "Full-Stack Developer (MERN + Gen AI) — [Company]" or "[Company] + Vishal (Full-Stack / Gen AI)"',
   },
   {
     id: 'conversational-inquiry',
@@ -259,8 +259,8 @@ export const ANTI_SPAM_ARCHETYPES: AntiSpamStructureArchetype[] = [
     structuralPattern: 'Conversational outreach: Reaching out regarding [Company]\'s product/space -> Snapshot of hands-on MERN, ~1k calls/day Pipecat voice agent, and DPoP auth -> GitHub link -> Low-friction signoff.',
     openingStyle: 'Natural note referencing their work in their space/product.',
     bodyStyle: 'Explain background building production AI voice systems (sales & HR pipelines) and full-stack platforms.',
-    ctaStyle: 'Low-pressure check if they have open developer seats in full-stack or AI/voice.',
-    subjectGuidance: 'e.g. "Exploring Full-Stack / AI Voice Roles at [Company]" or "Full-Stack / AI Voice Developer — open to opportunities"',
+    ctaStyle: 'Low-pressure check if they have open developer seats in full-stack or Gen AI.',
+    subjectGuidance: 'e.g. "Exploring Full-Stack / Gen AI Roles at [Company]" or "Full-Stack Developer (MERN + Gen AI) — open to opportunities"',
   },
   {
     id: 'execution-impact',
@@ -268,8 +268,8 @@ export const ANTI_SPAM_ARCHETYPES: AntiSpamStructureArchetype[] = [
     structuralPattern: 'Punchy 2-paragraph flow: Brief intro -> Key production highlights (Pipecat voice agent at 1,000 calls/day, Node/BullMQ/Redis queue, DPoP auth multiplayer) -> Question on team openings -> GitHub signoff.',
     openingStyle: 'Natural, brief greeting referencing their engineering team.',
     bodyStyle: 'Crisp sentences showing immediate technical depth across MERN, real-time STT/TTS pipelines, and async backend queues.',
-    ctaStyle: 'Ask if their team has upcoming full-stack or AI/voice engineering openings.',
-    subjectGuidance: 'e.g. "[Company] engineering / Vishal (Full-Stack & Voice AI)" or "Full-Stack / AI Voice Developer — open to opportunities"',
+    ctaStyle: 'Ask if their team has upcoming full-stack or Gen AI engineering openings.',
+    subjectGuidance: 'e.g. "[Company] engineering / Vishal (Full-Stack & Gen AI)" or "Full-Stack Developer (MERN + Gen AI) — open to opportunities"',
   },
 ];
 
@@ -297,7 +297,7 @@ export async function generateOnTheSpotEmail(
   // Default candidate profile matching the user's verified background
   const profile: CandidateProfile = {
     name: candidateProfile?.name || 'Vishal',
-    role: candidateProfile?.role || 'Full-Stack / AI Voice Developer',
+    role: candidateProfile?.role || 'Full-Stack Developer (MERN + Gen AI)',
     skills:
       candidateProfile?.skills ||
       'MERN (MongoDB, Express, React, Node.js), TypeScript, AI Voice Systems (Pipecat, real-time STT/TTS), BullMQ, Redis, DPoP auth, session management',
@@ -351,7 +351,7 @@ export async function generateOnTheSpotEmail(
     ? `Greet the contact naturally by first name: "${randomSalutation} ${contactName.split(' ')[0]},"`
     : `No individual contact/HR name is provided. Greet naturally as "Hi there," or "Hello," (STRICT RULE: Do NOT write "team", NEVER use "Hi ${companyName} team," or "Hi team," or "Dear team").`;
 
-  const systemPrompt = `You are a cold outreach email expert writing a short, authentic, personalized cold email from a developer reaching out directly regarding open full-stack or AI/voice engineering roles.
+  const systemPrompt = `You are a cold outreach email expert writing a short, authentic, personalized cold email from a developer reaching out directly regarding open full-stack or Gen AI engineering roles.
 
 ANTI-SPAM & ANTI-FINGERPRINTING DIRECTIVES (CRITICAL):
 - Avoid formulaic spam patterns, robotic templates, or generic fluff.
@@ -369,7 +369,7 @@ Candidate Profile & Technical Proof Points:
 - Core Accomplishment 1: Built a production AI voice agent handling ~1,000 calls/day across multiple clients — sales and HR hiring pipelines — on a Pipecat pipeline with real-time STT/TTS and a call queue backend (Node, BullMQ, Redis).
 - Core Accomplishment 2: Built a real-time multiplayer platform with a full auth system (DPoP, rotating refresh tokens, device-level session management).
 - Company Context: Reaching out to ${companyName} (${lead.catName || 'software / tech space'}).
-- Goal: Check if they have any full-stack or AI/voice engineering openings on their team right now.
+- Goal: Check if they have any full-stack or Gen AI engineering openings on their team right now.
 
 Strict Content & Formatting Rules:
 1. Salutation: ${salutationRule}
@@ -377,7 +377,7 @@ Strict Content & Formatting Rules:
    - "I'm Vishal, a full-stack developer (MERN + AI voice systems)."
    - Production AI voice agent handling ~1,000 calls/day across multiple clients (sales and HR hiring pipelines) on a Pipecat pipeline with real-time STT/TTS and a call queue backend (Node, BullMQ, Redis).
    - Real-time multiplayer platform with full auth system (DPoP, rotating refresh tokens, device-level session management).
-   - "Looking at ${companyName}'s work in ${lead.catName || 'tech'} and wanted to check — any full-stack or AI/voice engineering openings on your team right now?"
+   - "Looking at ${companyName}'s work in ${lead.catName || 'tech'} and wanted to check — any full-stack or Gen AI engineering openings on your team right now?"
 3. Length: 60–95 words (crisp, authentic, easy to read on mobile).
 4. Links: Include "GitHub: github.com/MrSanito". Do NOT invent other URLs (no voice.solobuildai.com, no LinkedIn).
 5. Sign-off: End strictly with:
@@ -394,14 +394,14 @@ Target Recipient & Company:
 - Space / Product / Focus: ${lead.catName || 'Software & Tech'}
 - Website / Domain: ${lead.website || 'N/A'}
 - City / Location: ${lead.address || 'Remote'}
-- Candidate Notes: ${customInstructions || 'Inquiring about full-stack or AI/voice openings.'}
+- Candidate Notes: ${customInstructions || 'Inquiring about full-stack or Gen AI openings.'}
 
 Candidate Profile:
 - Name: Vishal
-- Role: Full-Stack Developer (MERN + AI voice systems)
+- Role: Full-Stack Developer (MERN + Gen AI)
 - Voice Agent Experience: Built production AI voice agent handling ~1,000 calls/day across multiple clients (sales and HR hiring pipelines) on a Pipecat pipeline with real-time STT/TTS and a call queue backend (Node, BullMQ, Redis).
 - Auth & Real-Time Experience: Built a real-time multiplayer platform with a full auth system (DPoP, rotating refresh tokens, device-level session management).
-- Ask: Looking at ${companyName}'s work and checking if there are any full-stack or AI/voice engineering openings on their team right now.
+- Ask: Looking at ${companyName}'s work in ${lead.catName || 'tech'} and checking if there are any full-stack or Gen AI engineering openings on their team right now.
 - GitHub: github.com/MrSanito
 - Sign-off: Best, Vishal`;
 
@@ -441,7 +441,7 @@ Candidate Profile:
             .replace(/https?:\/\/(?:www\.)?linkedin\.com\/[^\s<>"']*/gi, '');
         };
 
-        const cleanedSubject = sanitizeUrlReferences(parsed.subject || `Full-Stack / AI Voice Developer — ${companyName}`);
+        const cleanedSubject = sanitizeUrlReferences(parsed.subject || `Full-Stack Developer (MERN + Gen AI) — ${companyName}`);
         const cleanedHtml = sanitizeUrlReferences(parsed.htmlBody || `<p>${parsed.textBody?.replace(/\n/g, '<br/>')}</p>`);
         const cleanedText = sanitizeUrlReferences(parsed.textBody || parsed.htmlBody?.replace(/<[^>]*>?/gm, ''));
 

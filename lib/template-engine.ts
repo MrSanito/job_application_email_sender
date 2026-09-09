@@ -1,15 +1,15 @@
 import { Lead } from '@/types';
 
-export const DEFAULT_SUBJECT_TEMPLATE = 'Full-Stack / AI Voice Developer — open to opportunities';
+export const DEFAULT_SUBJECT_TEMPLATE = 'Full-Stack Developer (MERN + Gen AI) — open to opportunities';
 
 export const FALLBACK_TEMPLATES = [
   {
-    subject: 'Full-Stack / AI Voice Developer — open to opportunities',
+    subject: 'Full-Stack Developer (MERN + Gen AI) — open to opportunities',
     body: `Hi {{name}},
 
 I'm Vishal, a full-stack developer (MERN + AI voice systems). Recently I built a production AI voice agent handling ~1,000 calls/day across multiple clients — sales and HR hiring pipelines — on a Pipecat pipeline with real-time STT/TTS and a call queue backend (Node, BullMQ, Redis). I've also built a real-time multiplayer platform with a full auth system (DPoP, rotating refresh tokens, device-level session management).
 
-Looking at {{company}}'s work in {{catName}} and wanted to check — any full-stack or AI/voice engineering openings on your team right now?
+Looking at {{company}}'s work in {{catName}} and wanted to check — any full-stack or Gen AI engineering openings on your team right now?
 
 GitHub: github.com/MrSanito
 
@@ -17,12 +17,12 @@ Best,
 Vishal`,
   },
   {
-    subject: 'Full-Stack / AI Voice Developer — {{company}}',
+    subject: 'Full-Stack Developer (MERN + Gen AI) — {{company}}',
     body: `Hi {{name}},
 
 I'm Vishal, a full-stack developer (MERN + AI voice systems). Recently I built a production AI voice agent handling ~1,000 calls/day across multiple clients — sales and HR hiring pipelines — on a Pipecat pipeline with real-time STT/TTS and a call queue backend (Node, BullMQ, Redis). I've also built a real-time multiplayer platform with a full auth system (DPoP, rotating refresh tokens, device-level session management).
 
-Looking at {{company}}'s work in {{catName}} and wanted to check — any full-stack or AI/voice engineering openings on your team right now?
+Looking at {{company}}'s work in {{catName}} and wanted to check — any full-stack or Gen AI engineering openings on your team right now?
 
 GitHub: github.com/MrSanito
 
@@ -30,12 +30,12 @@ Best,
 Vishal`,
   },
   {
-    subject: 'Exploring Full-Stack / AI Voice Roles at {{company}}',
+    subject: 'Exploring Full-Stack / Gen AI Roles at {{company}}',
     body: `Hi {{name}},
 
 I'm Vishal, a full-stack developer (MERN + AI voice systems). Recently I built a production AI voice agent handling ~1,000 calls/day across multiple clients — sales and HR hiring pipelines — on a Pipecat pipeline with real-time STT/TTS and a call queue backend (Node, BullMQ, Redis). I've also built a real-time multiplayer platform with a full auth system (DPoP, rotating refresh tokens, device-level session management).
 
-Looking at {{company}}'s work in {{catName}} and wanted to check — any full-stack or AI/voice engineering openings on your team right now?
+Looking at {{company}}'s work in {{catName}} and wanted to check — any full-stack or Gen AI engineering openings on your team right now?
 
 GitHub: github.com/MrSanito
 
