@@ -88,9 +88,6 @@ export default function QueueMetrics({
     try {
       setIsActing(true);
       await onCampaignAction(action);
-      if (action === 'pause') toast.warning('Campaign execution paused');
-      if (action === 'resume') toast.success('Campaign execution resumed');
-      if (action === 'clear') toast.info('Campaign cleared and reset');
     } catch {
       toast.error(`Failed to ${action} campaign`);
     } finally {
@@ -183,7 +180,7 @@ export default function QueueMetrics({
                 className="text-xs gap-1.5"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                Reset
+                Clear All Jobs
               </Button>
             </div>
           </div>
@@ -327,16 +324,16 @@ export default function QueueMetrics({
         </div>
       </div>
 
-      {/* Confirmation Modal for Reset */}
+      {/* Confirmation Modal for Clear All */}
       <Dialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
         <DialogContent size="sm">
           <DialogHeader>
             <DialogTitle>
               <AlertTriangle className="w-5 h-5 text-rose-400" />
-              <span>Reset & Clear Campaign?</span>
+              <span>Clear All Jobs & Reset Queue?</span>
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to reset this campaign? All pending email jobs, logs, and schedule state will be cleared.
+              This will permanently delete all email jobs from MongoDB Atlas, purge all pending messages and queues from Upstash QStash, and reset the active campaign.
             </DialogDescription>
           </DialogHeader>
 
@@ -353,9 +350,9 @@ export default function QueueMetrics({
               size="sm"
               onClick={() => handleAction('clear')}
               loading={isActing}
-              loadingText="Resetting..."
+              loadingText="Clearing All..."
             >
-              Yes, Reset Campaign
+              Yes, Clear All Jobs
             </Button>
           </DialogFooter>
         </DialogContent>

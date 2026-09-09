@@ -349,20 +349,32 @@ export async function updateJobResult(
   return job;
 }
 
-export async function clearActiveCampaign(): Promise<void> {
+export async function clearActiveCampaign(): Promise<{
+  deletedCampaigns: number;
+  deletedJobs: number;
+  cancelledSchedules: number;
+  cancelledMessages: number;
+}> {
   global.__jobApplierCampaign = null;
   global.__jobApplierLogs = [];
 
+  let deletedCampaigns = 0;
+  let deletedJobs = 0;
+
+  // 1. Purge MongoDB
   try {
     const conn = await connectMongoose();
     if (conn) {
-      await Campaign.deleteMany({});
-      await EmailLog.deleteMany({});
+      const campRes = await Campaign.deleteMany({});
+      const logRes = await EmailLog.deleteMany({});
+      deletedCampaigns = campRes.deletedCount || 0;
+      deletedJobs = logRes.deletedCount || 0;
     }
   } catch (e) {
     console.warn('Mongoose delete failed:', e);
   }
 
+  // 2. Purge Redis
   const redis = getRedisClient();
   if (redis) {
     try {
@@ -372,4 +384,23 @@ export async function clearActiveCampaign(): Promise<void> {
       console.warn('Redis delete failed:', e);
     }
   }
+
+  // 3. Purge all Upstash QStash tasks, schedules, and messages
+  let cancelledSchedules = 0;
+  let cancelledMessages = 0;
+  try {
+    const { purgeAllQStashTasks } = await import('./upstash');
+    const qRes = await purgeAllQStashTasks();
+    cancelledSchedules = qRes.cancelledSchedules;
+    cancelledMessages = qRes.cancelledMessages;
+  } catch (qErr) {
+    console.warn('QStash purge during clear error:', qErr);
+  }
+
+  return {
+    deletedCampaigns,
+    deletedJobs,
+    cancelledSchedules,
+    cancelledMessages,
+  };
 }

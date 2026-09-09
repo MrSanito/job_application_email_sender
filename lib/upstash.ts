@@ -199,31 +199,62 @@ export async function purgeAllQStashTasks(token?: string): Promise<{
     console.warn('QStash schedules delete error:', e);
   }
 
-  // 2. Delete pending messages via QStash API
+  // 2. Delete/cancel all pending messages using official QStash SDK
   try {
-    const qToken = token || cleanEnv(process.env.QSTASH_TOKEN);
-    if (qToken) {
-      const resp = await fetch('https://qstash.upstash.io/v2/messages', {
-        headers: { Authorization: `Bearer ${qToken}` },
-      });
-      if (resp.ok) {
-        const data = await resp.json();
-        const messages = Array.isArray(data) ? data : data.messages || [];
-        for (const m of messages) {
-          const msgId = m.messageId || m.id;
-          if (msgId) {
-            try {
-              await qstash.messages.delete(msgId);
-              cancelledMessages++;
-            } catch (msgDelErr) {
-              console.warn(`Could not delete message ${msgId}:`, msgDelErr);
+    let loopCount = 0;
+    let cancelled = 0;
+    do {
+      const res = await qstash.messages.cancel({ all: true, count: 100 });
+      cancelled = res?.cancelled || 0;
+      cancelledMessages += cancelled;
+      loopCount++;
+    } while (cancelled > 0 && loopCount < 10);
+  } catch (mErr) {
+    console.warn('QStash messages.cancel SDK error, trying REST API:', mErr);
+    try {
+      const qToken = token || cleanEnv(process.env.QSTASH_TOKEN);
+      if (qToken) {
+        const resp = await fetch('https://qstash.upstash.io/v2/messages', {
+          headers: { Authorization: `Bearer ${qToken}` },
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          const messages = Array.isArray(data) ? data : data.messages || [];
+          for (const m of messages) {
+            const msgId = m.messageId || m.id;
+            if (msgId) {
+              try {
+                await qstash.messages.cancel(msgId);
+                cancelledMessages++;
+              } catch (msgDelErr) {
+                console.warn(`Could not delete message ${msgId}:`, msgDelErr);
+              }
             }
           }
         }
       }
+    } catch (fallbackErr) {
+      console.warn('QStash fallback message delete error:', fallbackErr);
     }
-  } catch (mErr) {
-    console.warn('QStash messages delete error:', mErr);
+  }
+
+  // 3. Clear named queue: email_job_queue via SDK and REST
+  try {
+    await qstash.queue({ queueName: 'email_job_queue' }).delete();
+  } catch (qErr) {
+    console.warn('QStash queue SDK delete notice:', qErr);
+  }
+
+  try {
+    const qToken = token || cleanEnv(process.env.QSTASH_TOKEN);
+    if (qToken) {
+      await fetch('https://qstash.upstash.io/v2/queues/email_job_queue', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${qToken}` },
+      });
+    }
+  } catch (qErr) {
+    console.warn('QStash queue clear error:', qErr);
   }
 
   return {

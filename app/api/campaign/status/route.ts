@@ -69,8 +69,12 @@ export async function POST(req: NextRequest) {
     const campaign = await getActiveCampaign();
 
     if (action === 'clear') {
-      await clearActiveCampaign();
-      return NextResponse.json({ success: true, message: 'Campaign cleared.' });
+      const result = await clearActiveCampaign();
+      return NextResponse.json({
+        success: true,
+        message: `All jobs cleared! (${result.deletedJobs} jobs deleted, ${result.cancelledMessages} QStash tasks purged).`,
+        details: result,
+      });
     }
 
     if (!campaign) {

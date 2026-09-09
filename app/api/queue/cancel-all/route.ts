@@ -1,12 +1,23 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { purgeAllQStashTasks, getRedisClient } from '@/lib/upstash';
 import { connectMongoose } from '@/lib/mongodb';
 import { Campaign } from '@/models/Campaign';
 import { EmailLog } from '@/models/EmailLog';
-import { REDIS_CAMPAIGN_KEY } from '@/lib/campaign-store';
+import { REDIS_CAMPAIGN_KEY, clearActiveCampaign } from '@/lib/campaign-store';
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
+    const body = await req.json().catch(() => ({}));
+    const mode = body?.mode || 'clear';
+
+    if (mode === 'clear') {
+      const clearRes = await clearActiveCampaign();
+      return NextResponse.json({
+        success: true,
+        message: `All jobs cleared! (${clearRes.deletedJobs} database jobs deleted, ${clearRes.cancelledMessages} QStash tasks cancelled).`,
+        details: clearRes,
+      });
+    }
     // 1. Cancel all QStash schedules and delayed messages
     const qstashResult = await purgeAllQStashTasks();
 

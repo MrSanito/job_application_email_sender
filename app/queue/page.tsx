@@ -7,7 +7,7 @@ import DeliveryLogsTable from '@/components/DeliveryLogsTable';
 import SettingsModal from '@/components/SettingsModal';
 import TestQStashModal from '@/components/TestQStashModal';
 import { CampaignState, QueueJob } from '@/types';
-import { Activity, RefreshCw, AlertTriangle, Zap, ShieldAlert } from 'lucide-react';
+import { Activity, RefreshCw, AlertTriangle, Zap, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -78,10 +78,16 @@ export default function QueuePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action }),
       });
-      await res.json();
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message || `Campaign ${action} completed successfully`);
+      } else {
+        toast.error(data.error || `Failed to ${action} campaign`);
+      }
       await fetchStatus();
     } catch (e) {
       console.error('Campaign action failed:', e);
+      toast.error(`Error performing ${action} action`);
     }
   };
 
@@ -103,21 +109,25 @@ export default function QueuePage() {
     }
   };
 
-  // Cancel all pending QStash tasks & database jobs
-  const handleCancelAll = async () => {
+  // Clear all pending QStash tasks & database jobs
+  const handleClearAll = async () => {
     try {
       setIsCancellingAll(true);
-      const res = await fetch('/api/queue/cancel-all', { method: 'POST' });
+      const res = await fetch('/api/queue/cancel-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'clear' }),
+      });
       const data = await res.json();
       if (data.success) {
-        toast.success(data.message || 'All scheduled tasks cancelled successfully!');
+        toast.success(data.message || 'All jobs cleared successfully!');
       } else {
-        toast.error(data.error || 'Failed to cancel all tasks.');
+        toast.error(data.error || 'Failed to clear all jobs.');
       }
       await fetchStatus();
     } catch (e) {
-      console.error('Cancel all error:', e);
-      toast.error('Error communicating with cancellation endpoint.');
+      console.error('Clear all error:', e);
+      toast.error('Error communicating with clear endpoint.');
     } finally {
       setIsCancellingAll(false);
       setIsCancelConfirmOpen(false);
@@ -159,8 +169,8 @@ export default function QueuePage() {
               onClick={() => setIsCancelConfirmOpen(true)}
               className="gap-1.5 text-xs shadow-rose-500/10"
             >
-              <ShieldAlert className="w-3.5 h-3.5" />
-              <span>Cancel All Scheduled Tasks</span>
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Clear All Jobs</span>
             </Button>
 
             <Button
@@ -251,16 +261,16 @@ export default function QueuePage() {
         onScheduledSuccess={fetchStatus}
       />
 
-      {/* Cancel All Tasks Modal Confirmation */}
+      {/* Clear All Jobs Modal Confirmation */}
       <Dialog open={isCancelConfirmOpen} onOpenChange={setIsCancelConfirmOpen}>
         <DialogContent size="sm">
           <DialogHeader>
             <DialogTitle>
               <AlertTriangle className="w-5 h-5 text-rose-400" />
-              <span>Cancel All Scheduled Tasks?</span>
+              <span>Clear All Jobs & Reset Queue?</span>
             </DialogTitle>
             <DialogDescription>
-              This will purge all delayed messages from Upstash QStash cloud queue and cancel all pending database email jobs. This action cannot be undone.
+              This will permanently delete all email jobs from MongoDB Atlas, purge all pending messages and queues from Upstash QStash, and reset the active campaign. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
 
@@ -270,16 +280,16 @@ export default function QueuePage() {
               size="sm"
               onClick={() => setIsCancelConfirmOpen(false)}
             >
-              No, Keep Scheduled
+              Cancel
             </Button>
             <Button
               variant="destructive"
               size="sm"
-              onClick={handleCancelAll}
+              onClick={handleClearAll}
               loading={isCancellingAll}
-              loadingText="Cancelling All..."
+              loadingText="Clearing All..."
             >
-              Yes, Cancel All
+              Yes, Clear All Jobs
             </Button>
           </DialogFooter>
         </DialogContent>
