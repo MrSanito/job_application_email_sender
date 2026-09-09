@@ -313,42 +313,41 @@ export async function generateOnTheSpotEmail(
     ? `Greet the contact naturally by first name: "${randomSalutation} ${contactName.split(' ')[0]},"`
     : `No individual contact/HR name is provided. Greet naturally as "Hi there," or "Hello," (STRICT RULE: Do NOT write "team", NEVER use "Hi ${companyName} team," or "Hi team," or "Dear team").`;
 
-  const systemPrompt = `You are a cold outreach email expert writing a short, authentic, personalized cold email from a developer reaching out directly regarding open full-stack or Gen AI engineering roles.
+  const systemPrompt = `You are an elite developer outreach specialist writing short, authentic, personalized cold outreach emails for Vishal, inquiring about open full-stack or Gen AI engineering roles.
 
-ANTI-SPAM & ANTI-FINGERPRINTING DIRECTIVES (CRITICAL):
-- Avoid formulaic spam patterns, robotic templates, or generic fluff.
-- DO NOT use generic spam openers like: "I hope this email finds you well", "I came across your company", "I was impressed by", "I am writing to express my eager interest", "cutting-edge", "game-changer", "world-class".
-- Adopt this specific structural angle for this email: [${archetype.name}]
-- Structural guidance: ${archetype.structuralPattern}
-- Opening guidance: ${archetype.openingStyle}
-- Body guidance: ${archetype.bodyStyle}
-- CTA guidance: ${archetype.ctaStyle}
-- Subject Line style: ${archetype.subjectGuidance}
+50% CORE ANCHOR / 50% DYNAMIC REPHRASING & CONTEXT MANDATE:
+Every email MUST adhere to the 50/50 rule:
+1. 50% CORE TRUTH (THE ANCHOR - NEVER OMIT):
+   - Identity: Vishal, a full-stack developer (MERN + AI voice systems / Gen AI pipelines).
+   - Core Production Accomplishment 1: Built a production AI voice agent handling ~1,000 calls/day across multiple clients (sales and HR hiring pipelines) on a Pipecat pipeline with sub-second real-time STT/TTS and a call queue backend (Node, BullMQ, Redis).
+   - Core Production Accomplishment 2: Built a real-time multiplayer platform with full auth system (DPoP, rotating refresh tokens, device-level session management).
+   - Portfolio & Link: End strictly with "GitHub: github.com/MrSanito" (DO NOT invent other URLs).
+   - Sign-off: strictly "Best,\nVishal"
 
-Candidate Profile & Technical Proof Points:
-- Name: Vishal
-- Role: Full-stack developer (MERN + AI voice systems)
-- Core Accomplishment 1: Built a production AI voice agent handling ~1,000 calls/day across multiple clients — sales and HR hiring pipelines — on a Pipecat pipeline with real-time STT/TTS and a call queue backend (Node, BullMQ, Redis).
-- Core Accomplishment 2: Built a real-time multiplayer platform with a full auth system (DPoP, rotating refresh tokens, device-level session management).
-- Goal: Inquire if there are any full-stack or Gen AI engineering openings on their team right now.
+2. 50% DYNAMIC CONTEXT & REPHRASING (LET THE AI DO THE WORK):
+   - REPHRASE THE WORDS: Do NOT copy sentences verbatim across emails. Intelligently rephrase sentence structures, technical vocabulary, opening hooks, and transitions.
+   - PROVIDE AUTHENTIC CONTEXT: Read the company's Tavily web intelligence provided below. Extract 1-2 specific details about what ${companyName} actually does (their product, platform, industry challenge, or engineering focus).
+   - CONTEXTUAL BRIDGE: Seamlessly connect Vishal's experience in scaling low-latency audio pipelines and high-concurrency backend queues directly to ${companyName}'s product or technical domain.
+   - Tailor the flow to the assigned archetype: [${archetype.name}].
 
-Strict Content & Formatting Rules:
-1. Salutation: ${salutationRule}
-2. Accurately highlight:
-   - "I'm Vishal, a full-stack developer (MERN + AI voice systems)."
-   - Production AI voice agent handling ~1,000 calls/day across multiple clients (sales and HR hiring pipelines) on a Pipecat pipeline with real-time STT/TTS and a call queue backend (Node, BullMQ, Redis).
-   - Real-time multiplayer platform with full auth system (DPoP, rotating refresh tokens, device-level session management).
-   - Natural bridge connecting candidate background to ${companyName}'s product focus based on the web intelligence provided below.
-3. Length: 60–95 words (crisp, authentic, easy to read on mobile).
-4. Links: Include "GitHub: github.com/MrSanito". Do NOT invent other URLs.
-5. Sign-off: End strictly with:
-GitHub: github.com/MrSanito
+ANTI-SPAM & ANTI-ROBOT DIRECTIVES:
+- NEVER use generic filler phrases like "I hope this email finds you well", "I came across your company", "I was impressed by", "cutting-edge", "game-changer", "world-class".
+- Salutation: ${salutationRule}
+- Total length: 65–95 words (crisp, authentic, looks great on mobile).
+- Subject line: Crisp, under 8 words. Choose or vary from these styles:
+  * Full-Stack Developer (MERN + Gen AI) — open to opportunities
+  * Full-Stack Developer (MERN + Gen AI) — ${companyName}
+  * Exploring Full-Stack / Gen AI Roles at ${companyName}
+  * Quick question regarding Full-Stack / AI engineering at ${companyName}
+  * Full-Stack & Gen AI Engineer — Application for ${companyName}
+  * Full-Stack Dev (Next.js, Node, AI Voice Systems) — ${companyName}
+  * Inquiring about Full-Stack openings at ${companyName}
+  * Software Engineer (MERN + Real-Time & Gen AI) — ${companyName}
+  * Full-Stack Engineer interested in ${companyName}'s engineering team
+  * Open to full-stack / Gen AI roles — Vishal Nishad x ${companyName}
+- Output format: ONLY valid JSON: {"subject": "...", "htmlBody": "...", "textBody": "..."}. No markdown fences.`;
 
-Best,
-Vishal
-6. Output ONLY valid JSON: {"subject": "...", "htmlBody": "...", "textBody": "..."}. Subject under 8 words. No markdown fences.`;
-
-  const userPrompt = `Write a fresh, authentic job inquiry email tailored for:
+  const userPrompt = `Generate an authentic, 50% anchored / 50% rephrased job outreach email for:
 Target Recipient & Company:
 - Recipient Name: ${hasSpecificContactName ? contactName : `[No HR Name - Greet as "Hi there," or "Hello,"]`}
 - Company: ${companyName}
@@ -357,18 +356,16 @@ Target Recipient & Company:
 - City / Location: ${lead.address || 'Remote'}
 - Candidate Notes: ${customInstructions || 'Inquiring about full-stack or Gen AI openings.'}
 
-Company Live Web Intelligence (gathered from Tavily search):
+Live Company Web Intelligence (gathered via Tavily Search):
 """
 ${tavilyResult.context}
 """
 
-Candidate Profile:
-- Name: Vishal
-- Role: Full-Stack Developer (MERN + Gen AI)
-- Proof Points: ~1k calls/day Pipecat AI voice agent (STT/TTS, BullMQ/Redis) + Real-time multiplayer platform with DPoP auth.
-- Ask: Check if there are any full-stack or Gen AI engineering openings at ${companyName}.
-- GitHub: github.com/MrSanito
-- Sign-off: Best, Vishal`;
+Instructions:
+1. Keep the 50% anchor: Vishal's genuine accomplishments (~1k calls/day Pipecat AI voice agent + BullMQ/Redis backend, multiplayer DPoP platform, MERN, GitHub: github.com/MrSanito, Best, Vishal).
+2. Apply 50% dynamic rephrasing: creatively rephrase the vocabulary and sentence flow.
+3. Weave in the company context from the Tavily search above so the email feels uniquely hand-written for ${companyName}.
+4. Return ONLY valid JSON: {"subject": "...", "htmlBody": "...", "textBody": "..."}.`;
 
   // Helper for URL sanitization
   const sanitizeUrlReferences = (str: string) => {

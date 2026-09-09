@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Lead } from '@/types';
-import { renderTemplate, ROTATING_SUBJECT_TEMPLATES, getRandomSubjectTemplate } from '@/lib/template-engine';
+import { renderTemplate, ROTATING_SUBJECT_TEMPLATES, getRandomSubjectTemplate, FALLBACK_TEMPLATES, getRandomBodyTemplate } from '@/lib/template-engine';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -86,6 +86,16 @@ export default function EmailTemplateEditor({
     }
     onSubjectChange(nextSubject);
     toast.info('Switched to next random subject line template!');
+  };
+
+  const handleRotateBody = () => {
+    let nextBody = getRandomBodyTemplate();
+    if (nextBody === bodyTemplate && FALLBACK_TEMPLATES.length > 1) {
+      const remaining = FALLBACK_TEMPLATES.filter((t) => t.body !== bodyTemplate);
+      nextBody = remaining[Math.floor(Math.random() * remaining.length)].body;
+    }
+    onBodyChange(nextBody);
+    toast.info('Switched to next 50/50 rephrased body variation!');
   };
 
   // Generate on-the-spot personalized email using Mistral AI + Tavily Web Intelligence
@@ -277,9 +287,20 @@ export default function EmailTemplateEditor({
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                Email Body Template
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
+                  Email Body Template (50% Core Proof Points / 50% Context Variation)
+                </label>
+                <button
+                  type="button"
+                  onClick={handleRotateBody}
+                  className="text-xs text-indigo-300 hover:text-indigo-200 flex items-center gap-1.5 cursor-pointer bg-indigo-950/50 hover:bg-indigo-900/70 border border-indigo-700/50 px-2.5 py-1 rounded-lg transition-all active:scale-95 font-medium"
+                  title="Cycle between 5 rephrased 50/50 template variations"
+                >
+                  <Shuffle className="w-3 h-3 text-indigo-400" />
+                  <span>Rotate Body ({FALLBACK_TEMPLATES.length} Variations)</span>
+                </button>
+              </div>
               <Textarea
                 rows={9}
                 value={bodyTemplate}
@@ -287,6 +308,10 @@ export default function EmailTemplateEditor({
                 placeholder="Hi {{name}}, I noticed {{company}}..."
                 className="font-mono text-xs leading-relaxed"
               />
+              <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1.5">
+                <span className="text-cyan-400 font-semibold font-mono">⚡ 50/50 AI Dynamic Rephrase:</span>
+                <span>Click <strong>"Mistral + Tavily Research"</strong> to let AI research the company live and creatively rephrase sentences around your proof points.</span>
+              </p>
             </div>
           </div>
         ) : (
