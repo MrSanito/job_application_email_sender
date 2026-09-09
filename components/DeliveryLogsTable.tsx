@@ -75,6 +75,7 @@ export default function DeliveryLogsTable({
               { id: 'sent', label: 'Sent' },
               { id: 'simulated', label: 'Simulated' },
               { id: 'failed', label: 'Failed' },
+              { id: 'cancelled', label: 'Cancelled' },
             ].map((st) => (
               <button
                 key={st.id}
@@ -114,7 +115,7 @@ export default function DeliveryLogsTable({
               <th className="py-3 px-4">Recipient & Company</th>
               <th className="py-3 px-4">Subject Line</th>
               <th className="py-3 px-4">Day / Batch</th>
-              <th className="py-3 px-4">Dispatched At / Scheduled</th>
+              <th className="py-3 px-4">Scheduled Date & Time</th>
               <th className="py-3 px-4">Status</th>
               <th className="py-3 px-4 text-right">Details</th>
             </tr>
@@ -137,7 +138,7 @@ export default function DeliveryLogsTable({
                   </td>
                   <td className="py-3 px-4">
                     <div className="font-medium text-white group-hover:text-cyan-300 transition-colors">
-                      {job.lead.name}
+                      {job.lead.name || job.lead.company}
                     </div>
                     <div className="text-[11px] text-slate-400 font-mono flex items-center gap-1 mt-0.5">
                       <Mail className="w-3 h-3 text-slate-500" />
@@ -153,15 +154,55 @@ export default function DeliveryLogsTable({
                     <span className="text-amber-300">Batch #{job.batchNumber}</span>
                   </td>
                   <td className="py-3 px-4 text-[11px]">
-                    {job.sentAt ? (
-                      <div className="text-emerald-400 font-mono">
-                        Sent {new Date(job.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    <div className="space-y-0.5">
+                      {/* Scheduled Date & Time Badge */}
+                      <div className="flex items-center gap-1 font-mono text-slate-300">
+                        <Calendar className="w-3 h-3 text-indigo-400 shrink-0" />
+                        <span className="font-semibold text-white">
+                          {job.scheduledTime
+                            ? new Date(job.scheduledTime).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })
+                            : 'N/A'}
+                        </span>
+                        <span className="text-slate-500">@</span>
+                        <span className="text-cyan-300 font-bold">
+                          {job.scheduledTime
+                            ? new Date(job.scheduledTime).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
+                            : '--:--'}
+                        </span>
                       </div>
-                    ) : (
-                      <div className="text-slate-400">
-                        Sched {new Date(job.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    )}
+
+                      {/* Dispatch execution status sub-line */}
+                      {job.sentAt ? (
+                        <div className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                          <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+                          <span>
+                            Sent: {new Date(job.sentAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{' '}
+                            {new Date(job.sentAt).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                            })}
+                          </span>
+                        </div>
+                      ) : job.status === 'cancelled' ? (
+                        <div className="text-[10px] text-rose-400 font-mono flex items-center gap-1">
+                          <X className="w-2.5 h-2.5 text-rose-400 shrink-0" />
+                          <span>Cancelled</span>
+                        </div>
+                      ) : (
+                        <div className="text-[10px] text-amber-400/90 font-mono flex items-center gap-1">
+                          <Clock className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                          <span>Queued for schedule</span>
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="py-3 px-4">
                     {job.status === 'sent' && (
@@ -187,6 +228,11 @@ export default function DeliveryLogsTable({
                     {job.status === 'failed' && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-950/60 text-rose-400 border border-rose-800/40">
                         <AlertCircle className="w-3 h-3" /> Failed
+                      </span>
+                    )}
+                    {job.status === 'cancelled' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-950/60 text-rose-300 border border-rose-800/40">
+                        <X className="w-3 h-3" /> Cancelled
                       </span>
                     )}
                   </td>
@@ -251,7 +297,7 @@ export default function DeliveryLogsTable({
                   </span>
                 </div>
                 <h4 className="text-base font-bold text-white mt-0.5">
-                  {selectedJob.lead.name} ({selectedJob.lead.email}) — <span className="text-slate-400">{selectedJob.lead.company}</span>
+                  {selectedJob.lead.name || selectedJob.lead.company} ({selectedJob.lead.email}) — <span className="text-slate-400">{selectedJob.lead.company}</span>
                 </h4>
               </div>
               <button
@@ -278,9 +324,36 @@ export default function DeliveryLogsTable({
                 </span>
               </div>
               <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80">
-                <span className="text-slate-500 block">Exact Sent Timestamp</span>
+                <span className="text-slate-500 block">Scheduled Date & Time</span>
+                <span className="font-semibold text-indigo-300 mt-0.5 block">
+                  {selectedJob.scheduledTime
+                    ? `${new Date(selectedJob.scheduledTime).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })} @ ${new Date(selectedJob.scheduledTime).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      })}`
+                    : 'N/A'}
+                </span>
+              </div>
+              <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80">
+                <span className="text-slate-500 block">Exact Dispatched Timestamp</span>
                 <span className="font-semibold text-emerald-400 mt-0.5 block">
-                  {selectedJob.sentAt ? new Date(selectedJob.sentAt).toLocaleString() : 'Not Sent Yet'}
+                  {selectedJob.sentAt
+                    ? `${new Date(selectedJob.sentAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })} @ ${new Date(selectedJob.sentAt).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      })}`
+                    : 'Not Sent Yet'}
                 </span>
               </div>
               {selectedJob.durationMs && (
@@ -291,8 +364,16 @@ export default function DeliveryLogsTable({
                   </span>
                 </div>
               )}
+              {selectedJob.modelUsed && (
+                <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80">
+                  <span className="text-slate-500 block">AI Model Used</span>
+                  <span className="font-semibold text-cyan-300 mt-0.5 block truncate">
+                    {selectedJob.modelUsed}
+                  </span>
+                </div>
+              )}
               {selectedJob.qStashMessageId && (
-                <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80 col-span-2">
+                <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80 col-span-2 sm:col-span-3">
                   <span className="text-slate-500 block">Upstash QStash Message ID</span>
                   <span className="font-mono text-[11px] text-indigo-300 mt-0.5 block truncate">
                     {selectedJob.qStashMessageId}
