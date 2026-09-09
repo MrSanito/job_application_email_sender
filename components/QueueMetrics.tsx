@@ -28,6 +28,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 interface QueueMetricsProps {
   campaign: CampaignState | null;
   onRefresh: () => void;
+  isRefreshing?: boolean;
   onCampaignAction: (action: 'pause' | 'resume' | 'clear') => Promise<void>;
   onTriggerNext: (count: number) => Promise<void>;
   onOpenQStashTest?: () => void;
@@ -37,6 +38,7 @@ interface QueueMetricsProps {
 export default function QueueMetrics({
   campaign,
   onRefresh,
+  isRefreshing = false,
   onCampaignAction,
   onTriggerNext,
   onOpenQStashTest,
@@ -142,6 +144,8 @@ export default function QueueMetrics({
                 variant="outline"
                 size="sm"
                 onClick={onRefresh}
+                loading={isRefreshing}
+                loadingText="Refreshing..."
                 className="text-xs gap-1.5"
               >
                 <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
@@ -154,6 +158,7 @@ export default function QueueMetrics({
                   size="sm"
                   onClick={() => handleAction('pause')}
                   loading={isActing}
+                  loadingText="Pausing..."
                   className="text-xs gap-1.5 border-amber-500/30 text-amber-300 hover:bg-amber-500/10"
                 >
                   <Pause className="w-3.5 h-3.5" />
@@ -165,6 +170,7 @@ export default function QueueMetrics({
                   size="sm"
                   onClick={() => handleAction('resume')}
                   loading={isActing}
+                  loadingText="Resuming..."
                   className="text-xs gap-1.5 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
                 >
                   <Play className="w-3.5 h-3.5" />

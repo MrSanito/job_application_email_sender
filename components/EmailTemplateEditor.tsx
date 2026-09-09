@@ -17,11 +17,12 @@ import {
   RefreshCw,
   Wand2,
   Copy,
-  Check
+  Check,
+  Shuffle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Lead } from '@/types';
-import { renderTemplate } from '@/lib/template-engine';
+import { renderTemplate, ROTATING_SUBJECT_TEMPLATES, getRandomSubjectTemplate } from '@/lib/template-engine';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -75,6 +76,16 @@ export default function EmailTemplateEditor({
   const insertTagToBody = (tag: string) => {
     onBodyChange(bodyTemplate + '\n' + tag);
     toast.info(`Inserted ${tag} into email body`);
+  };
+
+  const handleRotateSubject = () => {
+    let nextSubject = getRandomSubjectTemplate();
+    if (nextSubject === subjectTemplate && ROTATING_SUBJECT_TEMPLATES.length > 1) {
+      const remaining = ROTATING_SUBJECT_TEMPLATES.filter((s) => s !== subjectTemplate);
+      nextSubject = remaining[Math.floor(Math.random() * remaining.length)];
+    }
+    onSubjectChange(nextSubject);
+    toast.info('Switched to next random subject line template!');
   };
 
   // Generate on-the-spot personalized email using Mistral AI + Tavily Web Intelligence
@@ -239,15 +250,30 @@ export default function EmailTemplateEditor({
         ) : activeTab === 'editor' ? (
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-                Subject Line Template
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
+                  Subject Line Template
+                </label>
+                <button
+                  type="button"
+                  onClick={handleRotateSubject}
+                  className="text-xs text-cyan-300 hover:text-cyan-200 flex items-center gap-1.5 cursor-pointer bg-cyan-950/50 hover:bg-cyan-900/70 border border-cyan-700/50 px-2.5 py-1 rounded-lg transition-all active:scale-95 font-medium"
+                  title="Pick another random subject from the 10 rotating templates"
+                >
+                  <Shuffle className="w-3 h-3 text-cyan-400" />
+                  <span>Rotate Subject ({ROTATING_SUBJECT_TEMPLATES.length} Options)</span>
+                </button>
+              </div>
               <Input
                 type="text"
                 value={subjectTemplate}
                 onChange={(e) => onSubjectChange(e.target.value)}
                 placeholder="e.g. Full-Stack / AI Voice Developer — open to opportunities"
               />
+              <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1.5">
+                <span className="text-amber-400 font-semibold font-mono">⚡ Auto-Rotation:</span>
+                <span>10 distinct subject lines automatically rotate at runtime via <code className="text-indigo-300 font-mono">Math.random()</code> per queued email.</span>
+              </p>
             </div>
 
             <div>

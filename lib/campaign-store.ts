@@ -3,7 +3,7 @@ import { connectMongoose } from './mongodb';
 import { Campaign } from '@/models/Campaign';
 import { EmailLog } from '@/models/EmailLog';
 import { getRedisClient } from './upstash';
-import { renderTemplate } from './template-engine';
+import { renderTemplate, getRandomSubjectTemplate, ROTATING_SUBJECT_TEMPLATES, DEFAULT_SUBJECT_TEMPLATE } from './template-engine';
 
 // In-memory fallback singleton
 declare global {
@@ -222,7 +222,17 @@ export async function initializeCampaign(
         const leadOffsetSeconds = i * (config.intervalSeconds || 60);
         const scheduledTime = new Date(batchDate.getTime() + leadOffsetSeconds * 1000);
 
-        const renderedSubject = renderTemplate(config.subjectTemplate, lead);
+        // Rotate subject lines dynamically at runtime with Math.random() if using default or rotating template
+        const isUsingRotatingTemplate =
+          !config.subjectTemplate ||
+          config.subjectTemplate === DEFAULT_SUBJECT_TEMPLATE ||
+          ROTATING_SUBJECT_TEMPLATES.includes(config.subjectTemplate);
+
+        const subjectTemplateToUse = isUsingRotatingTemplate
+          ? getRandomSubjectTemplate()
+          : config.subjectTemplate;
+
+        const renderedSubject = renderTemplate(subjectTemplateToUse, lead);
         const renderedBody = renderTemplate(config.bodyTemplate, lead);
 
         jobs.push({

@@ -621,6 +621,8 @@ export default function CampaignScheduler({
               size="lg"
               onClick={handleLaunchCampaign}
               disabled={isLaunching || calculation.validLeads === 0}
+              loading={isLaunching}
+              loadingText="Launching Campaign..."
               className="gap-2 shadow-indigo-500/25 text-sm"
             >
               <Rocket className="w-4 h-4" />

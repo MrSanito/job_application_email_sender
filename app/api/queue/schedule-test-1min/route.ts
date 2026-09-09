@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { scheduleQStashJob, getAppSettings } from '@/lib/upstash';
 import { getActiveCampaign, saveCampaignState } from '@/lib/campaign-store';
 import { QueueJob, Lead, CampaignState, CampaignConfig, CampaignCalculation } from '@/types';
+import { getRandomRenderedSubject } from '@/lib/template-engine';
 
 export async function POST(req: NextRequest) {
   try {
@@ -62,8 +63,8 @@ export async function POST(req: NextRequest) {
       batchNumber: 1,
       scheduledTime,
       status: 'queued',
-      subject: `Application for ${catName.trim()} - Vishal Nishad`,
-      bodyHtml: `Hi ${name.trim()},\n\nI am reaching out regarding full-stack engineering opportunities at ${company.trim()}. My portfolio is https://zynito.in\n\nBest regards,\nVishal Nishad`,
+      subject: getRandomRenderedSubject(testLead),
+      bodyHtml: `Hi ${name.trim()},\n\nI am reaching out regarding full-stack engineering opportunities at ${company.trim()}. My GitHub portfolio is https://github.com/MrSanito\n\nBest regards,\nVishal`,
     };
 
     // Ensure job is tracked in store / MongoDB

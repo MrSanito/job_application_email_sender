@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface DeliveryLogsTableProps {
   jobs: QueueJob[];
@@ -38,6 +39,7 @@ interface DeliveryLogsTableProps {
   onSearchChange: (q: string) => void;
   statusFilter: string;
   onStatusFilterChange: (st: string) => void;
+  isLoading?: boolean;
 }
 
 export default function DeliveryLogsTable({
@@ -50,6 +52,7 @@ export default function DeliveryLogsTable({
   onSearchChange,
   statusFilter,
   onStatusFilterChange,
+  isLoading = false,
 }: DeliveryLogsTableProps) {
   const [selectedJob, setSelectedJob] = useState<QueueJob | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -68,12 +71,18 @@ export default function DeliveryLogsTable({
       <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <CardTitle>
-            <Activity className="w-5 h-5 text-indigo-400" />
+            <Activity className={`w-5 h-5 ${isLoading ? 'text-cyan-400 animate-spin' : 'text-indigo-400'}`} />
             <span>Email Delivery Stream & Execution Logs</span>
-            <Badge variant="success" dot className="font-mono text-xs">
-              <Database className="w-3 h-3 mr-1" />
-              MongoDB Atlas
-            </Badge>
+            {isLoading ? (
+              <Badge variant="purple" dot className="font-mono text-xs animate-pulse">
+                Fetching logs...
+              </Badge>
+            ) : (
+              <Badge variant="success" dot className="font-mono text-xs">
+                <Database className="w-3 h-3 mr-1" />
+                MongoDB Atlas
+              </Badge>
+            )}
           </CardTitle>
           <CardDescription>
             Live trace of dispatch timestamps, QStash execution status, and personalized AI templates.
@@ -130,7 +139,39 @@ export default function DeliveryLogsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {jobs.length === 0 ? (
+            {isLoading ? (
+              Array.from({ length: 6 }).map((_, idx) => (
+                <TableRow key={`skeleton-row-${idx}`}>
+                  <TableCell>
+                    <Skeleton className="h-4 w-14 rounded" />
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-4 w-36 rounded" />
+                      <Skeleton className="h-3 w-28 rounded" />
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-52 rounded" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-24 rounded" />
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-4 w-32 rounded" />
+                      <Skeleton className="h-3 w-20 rounded" />
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="h-7 w-16 rounded-lg ml-auto" />
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : jobs.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-10 text-slate-500 italic">
                   No queue jobs found matching the active filter.
@@ -245,7 +286,7 @@ export default function DeliveryLogsTable({
               variant="outline"
               size="sm"
               onClick={() => onPageChange(Math.max(1, page - 1))}
-              disabled={page === 1}
+              disabled={page === 1 || isLoading}
             >
               <ChevronLeft className="w-4 h-4" />
             </Button>
@@ -256,7 +297,7 @@ export default function DeliveryLogsTable({
               variant="outline"
               size="sm"
               onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-              disabled={page >= totalPages}
+              disabled={page >= totalPages || isLoading}
             >
               <ChevronRight className="w-4 h-4" />
             </Button>

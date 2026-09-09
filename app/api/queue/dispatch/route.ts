@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { updateJobResult } from '@/lib/campaign-store';
 import { sendEmailAsync } from '@/lib/mailer';
 import { generateOnTheSpotEmail } from '@/lib/ai-generator';
+import { getRandomRenderedSubject } from '@/lib/template-engine';
 import { Lead } from '@/types';
 
 export async function POST(req: NextRequest) {
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
     // Send email asynchronously
     const sendResult = await sendEmailAsync({
       to: lead.email,
-      subject: finalSubject || `Application for ${lead.catName || 'Engineering'} - Job Applicant`,
+      subject: finalSubject || getRandomRenderedSubject(lead),
       html: finalHtml,
     });
 

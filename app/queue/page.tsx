@@ -23,6 +23,8 @@ export default function QueuePage() {
   const [search, setSearch] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [isFetchingLogs, setIsFetchingLogs] = useState<boolean>(false);
   const [isProcessingBatch, setIsProcessingBatch] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isQstashTestOpen, setIsQstashTestOpen] = useState<boolean>(false);
@@ -31,8 +33,10 @@ export default function QueuePage() {
   const [isCancellingAll, setIsCancellingAll] = useState(false);
 
   // Fetch campaign status and jobs
-  const fetchStatus = useCallback(async () => {
+  const fetchStatus = useCallback(async (isManualRefresh = false) => {
     try {
+      if (isManualRefresh) setIsRefreshing(true);
+      setIsFetchingLogs(true);
       const url = new URL('/api/campaign/status', window.location.origin);
       if (statusFilter !== 'all') url.searchParams.set('status', statusFilter);
       if (search) url.searchParams.set('search', search);
@@ -55,6 +59,8 @@ export default function QueuePage() {
       console.warn('Fetch queue status failed:', e);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
+      setIsFetchingLogs(false);
     }
   }, [page, limit, search, statusFilter]);
 
@@ -186,10 +192,12 @@ export default function QueuePage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                fetchStatus();
+              onClick={async () => {
+                await fetchStatus(true);
                 toast.info('Refreshed queue status');
               }}
+              loading={isRefreshing}
+              loadingText="Refreshing..."
               className="gap-1.5 text-xs"
             >
               <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
@@ -214,7 +222,8 @@ export default function QueuePage() {
           ) : (
             <QueueMetrics
               campaign={campaign}
-              onRefresh={fetchStatus}
+              onRefresh={() => fetchStatus(true)}
+              isRefreshing={isRefreshing}
               onCampaignAction={handleCampaignAction}
               onTriggerNext={handleTriggerNext}
               onOpenQStashTest={() => setIsQstashTestOpen(true)}
@@ -242,6 +251,7 @@ export default function QueuePage() {
                 setStatusFilter(st);
                 setPage(1);
               }}
+              isLoading={isFetchingLogs}
             />
           </section>
         )}

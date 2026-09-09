@@ -5,6 +5,8 @@ import { Lead } from '@/types';
 import {
   renderTemplate,
   getRandomFallbackTemplate,
+  getRandomRenderedSubject,
+  getRandomSubjectTemplate,
 } from './template-engine';
 
 export interface DynamicEmailGenerationResult {
@@ -402,7 +404,8 @@ Candidate Profile:
           }
 
           const parsed = JSON.parse(rawText);
-          const cleanedSubject = sanitizeUrlReferences(parsed.subject || `Full-Stack Developer (MERN + Gen AI) — ${companyName}`);
+          const defaultRotatedSubj = getRandomRenderedSubject(lead);
+          const cleanedSubject = sanitizeUrlReferences(parsed.subject || defaultRotatedSubj);
           const cleanedHtml = sanitizeUrlReferences(parsed.htmlBody || `<p>${parsed.textBody?.replace(/\n/g, '<br/>')}</p>`);
           const cleanedText = sanitizeUrlReferences(parsed.textBody || parsed.htmlBody?.replace(/<[^>]*>?/gm, ''));
 
