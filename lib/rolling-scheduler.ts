@@ -63,3 +63,27 @@ export async function syncRollingQStashJobs(): Promise<{
 
   return { checked, newlyScheduled };
 }
+
+/**
+ * Register a recurring background QStash Cron (every 6 hours)
+ * to automatically wake up and sync the rolling 7-day queue for multi-week campaigns.
+ */
+export async function registerSyncCronSchedule(): Promise<{ success: boolean; scheduleId?: string }> {
+  const settings = getAppSettings();
+  const qstash = (await import('./upstash')).getQStashClient(settings.qstashToken);
+  if (!qstash) return { success: false };
+
+  try {
+    const isLocalhost = settings.webhookBaseUrl.includes('localhost') || settings.webhookBaseUrl.includes('127.0.0.1');
+    const destination = isLocalhost ? 'https://httpbin.org/post' : `${settings.webhookBaseUrl}/api/queue/sync`;
+    const res = await qstash.schedules.create({
+      destination,
+      cron: '0 */6 * * *', // Run every 6 hours
+    });
+    return { success: true, scheduleId: res.scheduleId };
+  } catch (e) {
+    console.warn('QStash cron sync schedule registration note:', e);
+    return { success: false };
+  }
+}
+

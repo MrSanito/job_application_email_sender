@@ -54,6 +54,12 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // If campaign spans beyond 7 days, register a recurring QStash sync cron
+      if (calculation.totalDaysToRun > 7) {
+        const { registerSyncCronSchedule } = await import('@/lib/rolling-scheduler');
+        registerSyncCronSchedule().catch((e) => console.warn('Cron schedule sync setup note:', e));
+      }
+
       // Persist updated jobs with QStash message IDs to MongoDB / Redis
       await saveCampaignState(campaign);
     }
