@@ -20,8 +20,8 @@ if (!global.__jobApplierLogs) {
   global.__jobApplierLogs = [];
 }
 
-const REDIS_CAMPAIGN_KEY = 'jobapplier:active_campaign';
-const REDIS_LOGS_KEY = 'jobapplier:queue_jobs';
+export const REDIS_CAMPAIGN_KEY = 'jobapplier:active_campaign';
+export const REDIS_LOGS_KEY = 'jobapplier:queue_jobs';
 
 export async function getActiveCampaign(): Promise<CampaignState | null> {
   // 1. Try Mongoose first

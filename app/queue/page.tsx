@@ -96,6 +96,30 @@ export default function QueuePage() {
     }
   };
 
+  // Cancel all pending QStash tasks & database jobs
+  const [isCancellingAll, setIsCancellingAll] = useState(false);
+  const handleCancelAll = async () => {
+    if (!confirm('Are you sure you want to cancel ALL pending QStash scheduled tasks and database jobs?')) {
+      return;
+    }
+    try {
+      setIsCancellingAll(true);
+      const res = await fetch('/api/queue/cancel-all', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message || 'All scheduled tasks cancelled successfully!');
+      } else {
+        alert(data.error || 'Failed to cancel all tasks.');
+      }
+      await fetchStatus();
+    } catch (e) {
+      console.error('Cancel all error:', e);
+      alert('Error communicating with cancellation endpoint.');
+    } finally {
+      setIsCancellingAll(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar
@@ -119,7 +143,16 @@ export default function QueuePage() {
             </h1>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleCancelAll}
+              disabled={isCancellingAll}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-bold transition-all hover:scale-[1.02] disabled:opacity-50"
+            >
+              <span>{isCancellingAll ? 'Cancelling...' : '🛑 Cancel All Tasks'}</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setIsQstashTestOpen(true)}

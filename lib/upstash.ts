@@ -150,3 +150,75 @@ export async function testQStashConnection(): Promise<{ success: boolean; messag
     };
   }
 }
+
+/**
+ * Cancel and purge all active QStash messages and schedules
+ */
+export async function purgeAllQStashTasks(token?: string): Promise<{
+  success: boolean;
+  cancelledSchedules: number;
+  cancelledMessages: number;
+  message: string;
+}> {
+  const qstash = getQStashClient(token);
+  if (!qstash) {
+    return {
+      success: true,
+      cancelledSchedules: 0,
+      cancelledMessages: 0,
+      message: 'QStash client not configured; simulation tasks cleared.',
+    };
+  }
+
+  let cancelledSchedules = 0;
+  let cancelledMessages = 0;
+
+  // 1. Delete all schedules
+  try {
+    const schedules = await qstash.schedules.list();
+    for (const s of schedules) {
+      try {
+        await qstash.schedules.delete(s.scheduleId);
+        cancelledSchedules++;
+      } catch (delErr) {
+        console.warn(`Could not delete schedule ${s.scheduleId}:`, delErr);
+      }
+    }
+  } catch (e) {
+    console.warn('QStash schedules delete error:', e);
+  }
+
+  // 2. Delete pending messages via QStash API
+  try {
+    const qToken = token || cleanEnv(process.env.QSTASH_TOKEN);
+    if (qToken) {
+      const resp = await fetch('https://qstash.upstash.io/v2/messages', {
+        headers: { Authorization: `Bearer ${qToken}` },
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        const messages = Array.isArray(data) ? data : data.messages || [];
+        for (const m of messages) {
+          const msgId = m.messageId || m.id;
+          if (msgId) {
+            try {
+              await qstash.messages.delete(msgId);
+              cancelledMessages++;
+            } catch (msgDelErr) {
+              console.warn(`Could not delete message ${msgId}:`, msgDelErr);
+            }
+          }
+        }
+      }
+    }
+  } catch (mErr) {
+    console.warn('QStash messages delete error:', mErr);
+  }
+
+  return {
+    success: true,
+    cancelledSchedules,
+    cancelledMessages,
+    message: `Cancelled ${cancelledSchedules} schedule(s) and ${cancelledMessages} delayed message(s) from Upstash QStash.`,
+  };
+}

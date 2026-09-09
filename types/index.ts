@@ -83,7 +83,7 @@ export interface QueueJob {
   dayNumber: number;
   batchNumber: number;
   scheduledTime: string; // ISO string
-  status: 'queued' | 'processing' | 'sent' | 'failed' | 'simulated';
+  status: 'queued' | 'processing' | 'sent' | 'failed' | 'simulated' | 'cancelled';
   sentAt?: string;
   error?: string;
   qStashMessageId?: string;
@@ -96,7 +96,7 @@ export interface CampaignState {
   id: string;
   name: string;
   createdAt: string;
-  status: 'draft' | 'running' | 'paused' | 'completed';
+  status: 'draft' | 'running' | 'paused' | 'completed' | 'cancelled';
   config: CampaignConfig;
   leads: Lead[];
   calculation: CampaignCalculation;
@@ -108,6 +108,7 @@ export interface CampaignState {
     sent: number;
     failed: number;
     simulated: number;
+    cancelled?: number;
   };
 }
 
