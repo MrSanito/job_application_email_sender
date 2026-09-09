@@ -1,5 +1,9 @@
 import { getActiveCampaign, saveCampaignState } from './campaign-store';
 import { getAppSettings, scheduleQStashJob, MAX_QSTASH_DELAY_SECONDS } from './upstash';
+import { connectMongoose } from './mongodb';
+import { EmailLog } from '@/models/EmailLog';
+
+let isSyncInProgress = false;
 
 /**
  * Rolling 7-Day Queue Synchronizer:
@@ -11,57 +15,79 @@ export async function syncRollingQStashJobs(): Promise<{
   checked: number;
   newlyScheduled: number;
 }> {
+  if (isSyncInProgress) {
+    console.log('Rolling sync already in progress, skipping duplicate call.');
+    return { checked: 0, newlyScheduled: 0 };
+  }
+
   const settings = getAppSettings();
   if (!settings.qstashToken) {
     return { checked: 0, newlyScheduled: 0 };
   }
 
-  const campaign = await getActiveCampaign();
-  if (!campaign || campaign.status !== 'running') {
-    return { checked: 0, newlyScheduled: 0 };
-  }
+  isSyncInProgress = true;
 
-  const now = Date.now();
-  const webhookUrl = `${settings.webhookBaseUrl}/api/queue/dispatch`;
-  let newlyScheduled = 0;
-  let checked = 0;
+  try {
+    const campaign = await getActiveCampaign();
+    if (!campaign || campaign.status !== 'running') {
+      return { checked: 0, newlyScheduled: 0 };
+    }
 
-  for (const job of campaign.jobs) {
-    if (job.status !== 'queued') continue;
-    checked++;
+    const now = Date.now();
+    const webhookUrl = `${settings.webhookBaseUrl}/api/queue/dispatch`;
+    let newlyScheduled = 0;
+    let checked = 0;
 
-    const hasActiveMessageId =
-      job.qStashMessageId &&
-      !job.qStashMessageId.startsWith('future-scheduled-') &&
-      !job.qStashMessageId.startsWith('sim-');
+    for (const job of campaign.jobs) {
+      if (job.status !== 'queued') continue;
+      checked++;
 
-    if (hasActiveMessageId) continue;
+      const hasActiveMessageId =
+        job.qStashMessageId &&
+        !job.qStashMessageId.startsWith('future-scheduled-') &&
+        !job.qStashMessageId.startsWith('sim-');
 
-    const targetTimeMs = new Date(job.scheduledTime).getTime();
-    const delaySeconds = Math.max(0, Math.round((targetTimeMs - now) / 1000));
+      if (hasActiveMessageId) continue;
 
-    // If it has now entered the rolling 7-day window, publish to QStash
-    if (delaySeconds <= MAX_QSTASH_DELAY_SECONDS) {
-      const qstashRes = await scheduleQStashJob(
-        job,
-        webhookUrl,
-        delaySeconds,
-        settings.qstashToken,
-        'email_job_queue'
-      );
+      const targetTimeMs = new Date(job.scheduledTime).getTime();
+      const delaySeconds = Math.max(0, Math.round((targetTimeMs - now) / 1000));
 
-      if (qstashRes.messageId && !qstashRes.isSimulated) {
-        job.qStashMessageId = qstashRes.messageId;
-        newlyScheduled++;
+      // If it has now entered the rolling 7-day window, publish to QStash
+      if (delaySeconds <= MAX_QSTASH_DELAY_SECONDS) {
+        const qstashRes = await scheduleQStashJob(
+          job,
+          webhookUrl,
+          delaySeconds,
+          settings.qstashToken,
+          'email_job_queue'
+        );
+
+        if (qstashRes.messageId && !qstashRes.isSimulated) {
+          job.qStashMessageId = qstashRes.messageId;
+          newlyScheduled++;
+
+          // Immediately stamp the ID in MongoDB to prevent any other concurrent process from scheduling it
+          try {
+            await connectMongoose();
+            await EmailLog.updateOne(
+              { id: job.id },
+              { $set: { qStashMessageId: qstashRes.messageId } }
+            );
+          } catch (dbErr) {
+            console.warn(`Could not stamp qStashMessageId for job ${job.id}:`, dbErr);
+          }
+        }
       }
     }
-  }
 
-  if (newlyScheduled > 0) {
-    await saveCampaignState(campaign);
-  }
+    if (newlyScheduled > 0) {
+      await saveCampaignState(campaign);
+    }
 
-  return { checked, newlyScheduled };
+    return { checked, newlyScheduled };
+  } finally {
+    isSyncInProgress = false;
+  }
 }
 
 /**
@@ -74,6 +100,14 @@ export async function registerSyncCronSchedule(): Promise<{ success: boolean; sc
   if (!qstash) return { success: false };
 
   try {
+    const existing = await qstash.schedules.list();
+    const alreadyExists = existing.some(
+      (s) => s.destination?.includes('/api/queue/sync') || s.cron === '0 */6 * * *'
+    );
+    if (alreadyExists) {
+      return { success: true, scheduleId: existing[0].scheduleId };
+    }
+
     const isLocalhost = settings.webhookBaseUrl.includes('localhost') || settings.webhookBaseUrl.includes('127.0.0.1');
     const destination = isLocalhost ? 'https://httpbin.org/post' : `${settings.webhookBaseUrl}/api/queue/sync`;
     const res = await qstash.schedules.create({
@@ -86,4 +120,5 @@ export async function registerSyncCronSchedule(): Promise<{ success: boolean; sc
     return { success: false };
   }
 }
+
 

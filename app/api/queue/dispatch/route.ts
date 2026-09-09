@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { updateJobResult } from '@/lib/campaign-store';
 import { sendEmailAsync } from '@/lib/mailer';
 import { generateOnTheSpotEmail } from '@/lib/ai-generator';
-import { syncRollingQStashJobs } from '@/lib/rolling-scheduler';
 import { Lead } from '@/types';
 
 export async function POST(req: NextRequest) {
@@ -72,9 +71,6 @@ export async function POST(req: NextRequest) {
         modelUsed: aiModelUsed,
         isAiGenerated: aiModelUsed.toLowerCase().includes('mistral'),
       });
-
-      // Asynchronously advance the rolling 7-day window for multi-week campaigns
-      syncRollingQStashJobs().catch((e) => console.warn('Rolling sync on dispatch warning:', e));
 
       return NextResponse.json({
         success: true,

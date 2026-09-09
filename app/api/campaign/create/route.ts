@@ -27,6 +27,14 @@ export async function POST(req: NextRequest) {
     const settings = getAppSettings();
     const webhookUrl = `${settings.webhookBaseUrl}/api/queue/dispatch`;
 
+    // Cancel previous running campaigns to avoid duplicate concurrent runs
+    try {
+      const { Campaign: CampModel } = await import('@/models/Campaign');
+      const { EmailLog: LogModel } = await import('@/models/EmailLog');
+      await CampModel.updateMany({ status: 'running', id: { $ne: campaign.id } }, { $set: { status: 'cancelled' } });
+      await LogModel.updateMany({ status: 'queued', campaignId: { $ne: campaign.id } }, { $set: { status: 'cancelled' } });
+    } catch (_) {}
+
     // If QStash is active, register campaign jobs within the 7-day window to QStash email_job_queue
     if (settings.qstashToken) {
       const now = Date.now();
@@ -52,12 +60,6 @@ export async function POST(req: NextRequest) {
             job.qStashMessageId = qstashRes.messageId;
           }
         }
-      }
-
-      // If campaign spans beyond 7 days, register a recurring QStash sync cron
-      if (calculation.totalDaysToRun > 7) {
-        const { registerSyncCronSchedule } = await import('@/lib/rolling-scheduler');
-        registerSyncCronSchedule().catch((e) => console.warn('Cron schedule sync setup note:', e));
       }
 
       // Persist updated jobs with QStash message IDs to MongoDB / Redis
