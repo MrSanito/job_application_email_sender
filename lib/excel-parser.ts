@@ -154,6 +154,8 @@ export function parseExcelBuffer(buffer: ArrayBuffer | Uint8Array): ParseResult 
 
     // Priority check for all possible email column header variations
     let rawEmail = getVal(
+      'primary_email',
+      'primary email',
       'email',
       'email_id',
       'email id',
@@ -174,20 +176,48 @@ export function parseExcelBuffer(buffer: ArrayBuffer | Uint8Array): ParseResult 
       'contact email',
       'work_email',
       'official_email',
-      'primary_email',
       'to_email'
     );
+
+    const altEmail = getVal(
+      'alternate_email_contact',
+      'alternate email / contact',
+      'alternate_email',
+      'alternate email',
+      'alternate_contact',
+      'alternate contact',
+      'secondary_email',
+      'secondary email',
+      'other_email',
+      'other email'
+    );
+
+    const notesVal = getVal('notes', 'note', 'remarks', 'remark', 'comments', 'comment', 'description');
 
     let rawWebsite = getVal('website', 'web_site', 'url', 'web_url', 'site', 'domain', 'web', 'link', 'homepage');
     const rawName = getVal('company', 'company_name', 'company name', 'business', 'business_name', 'org', 'organization', 'firm', 'employer', 'client');
     const company = cleanCompanyName(rawName);
     const contactName = getVal('contact', 'contact_name', 'contact name', 'name', 'full_name', 'full name', 'hr_name', 'hr name', 'recruiter', 'recruiter_name', 'lead_name', 'first_name', 'person');
     const catName = getVal('cat_name', 'cat name', 'category', 'category_name', 'categoryname', 'job_title', 'job title', 'title', 'role', 'position', 'designation', 'domain', 'industry', 'field');
-    const address = getVal('address', 'location', 'city', 'state', 'country', 'headquarters', 'hq', 'place');
+    let address = getVal('address', 'location', 'city', 'state', 'country', 'headquarters', 'hq', 'place');
+    if (!address && (bestSheetName.toLowerCase().includes('vadodara') || company.toLowerCase().includes('vadodara'))) {
+      address = 'Vadodara, Gujarat';
+    }
     const phone = getVal('number', 'phone', 'telephone', 'phone_number', 'phone number', 'mobile', 'cell', 'contact_number');
 
+    // If website is empty, check if notes or alt contains a website link
+    if (!rawWebsite) {
+      const urlMatch = (notesVal + ' ' + altEmail).match(/(?:https?:\/\/|www\.)[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}[^\s]*/);
+      if (urlMatch) {
+        rawWebsite = urlMatch[0];
+      }
+    }
+
+    // Combine primary email, alternate email, and notes to find all valid emails
+    const combinedEmailText = [rawEmail, altEmail, notesVal].filter(Boolean).join(' ');
+    
     // Fallback: If no explicit email column was matched, scan all cells in the row for an email pattern
-    if (!rawEmail) {
+    if (!rawEmail && !altEmail) {
       for (const val of Object.values(row)) {
         if (typeof val === 'string' && val.includes('@') && val.includes('.')) {
           const match = val.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
@@ -199,11 +229,15 @@ export function parseExcelBuffer(buffer: ArrayBuffer | Uint8Array): ParseResult 
       }
     }
 
-    const rawExtracted = extractEmail(rawEmail, rawWebsite, company);
-    const emailList = rawExtracted
-      .split(/[,;\n/|]/)
-      .map((e) => e.trim().toLowerCase())
-      .filter((e) => EMAIL_REGEX.test(e));
+    const rawExtracted = extractEmail(combinedEmailText || rawEmail, rawWebsite, company);
+    const emailList = Array.from(
+      new Set(
+        rawExtracted
+          .split(/[,;\n/| ]+/)
+          .map((e) => e.trim().toLowerCase())
+          .filter((e) => EMAIL_REGEX.test(e))
+      )
+    );
 
     const cleanEmail = emailList.join(', ');
     const isValidFormat = emailList.length > 0;

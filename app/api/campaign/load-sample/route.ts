@@ -3,29 +3,43 @@ import fs from 'fs';
 import path from 'path';
 import { parseExcelBuffer } from '@/lib/excel-parser';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const primaryPath = path.join(process.cwd(), 'public', 'data.xlsx');
-    const fallbackPath = path.join(process.cwd(), '..', 'JobApplier', 'data.xlsx');
+    const { searchParams } = new URL(req.url);
+    const requestedFile = searchParams.get('file');
 
-    let targetPath = primaryPath;
-    if (!fs.existsSync(primaryPath) && fs.existsSync(fallbackPath)) {
-      targetPath = fallbackPath;
+    const candidatePaths = [
+      requestedFile && path.join(process.cwd(), 'RealData', requestedFile),
+      requestedFile && path.join(process.cwd(), 'public', requestedFile),
+      path.join(process.cwd(), 'RealData', 'Vadodara_Company_Contacts.xlsx'),
+      path.join(process.cwd(), 'public', 'Vadodara_Company_Contacts.xlsx'),
+      path.join(process.cwd(), 'RealData', 'data.xlsx'),
+      path.join(process.cwd(), 'public', 'data.xlsx'),
+      path.join(process.cwd(), '..', 'JobApplier', 'data.xlsx'),
+    ].filter((p): p is string => Boolean(p && typeof p === 'string'));
+
+    let targetPath = '';
+    for (const p of candidatePaths) {
+      if (fs.existsSync(p)) {
+        targetPath = p;
+        break;
+      }
     }
 
-    if (!fs.existsSync(targetPath)) {
+    if (!targetPath) {
       return NextResponse.json(
-        { success: false, error: 'data.xlsx sample file not found.' },
+        { success: false, error: 'No Excel contact dataset found.' },
         { status: 404 }
       );
     }
 
     const fileBuffer = fs.readFileSync(targetPath);
     const parsed = parseExcelBuffer(fileBuffer);
+    const filename = path.basename(targetPath);
 
     return NextResponse.json({
       success: true,
-      filename: 'data.xlsx',
+      filename,
       leads: parsed.leads,
       stats: parsed.stats,
       headers: parsed.headers,
