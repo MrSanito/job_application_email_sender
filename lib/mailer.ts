@@ -90,7 +90,21 @@ export async function sendEmailAsync(options: EmailOptions): Promise<SendResult>
   }
 
   try {
-    const fromAddress = options.from || settings.smtpFrom || settings.smtpUser;
+    // Ensure fromAddress is valid and matches authenticated account (prevents Gmail 421 anti-spoofing rejection)
+    let fromAddress = options.from || settings.smtpFrom || settings.smtpUser;
+    if (!fromAddress || fromAddress.includes('example.com') || fromAddress.includes('applicant@')) {
+      fromAddress = settings.smtpUser ? `Vishal Nishad <${settings.smtpUser}>` : (fromAddress || 'vishalni2005@gmail.com');
+    }
+
+    // Clean and normalize recipient list (handling multiple comma-separated emails)
+    const rawTo = options.to || '';
+    const cleanRecipients = rawTo
+      .split(/[,;\n]/)
+      .map((e) => e.trim())
+      .filter((e) => e && e.includes('@') && !e.includes('Not publicly listed'));
+    
+    const targetTo = cleanRecipients.length > 0 ? cleanRecipients.join(', ') : rawTo;
+
     const defaultResume = getResumeAttachment();
     const attachments = options.attachments || [];
     if (defaultResume && !attachments.some((a) => a.filename.includes('Resume'))) {
@@ -99,7 +113,7 @@ export async function sendEmailAsync(options: EmailOptions): Promise<SendResult>
 
     const info = await transporter.sendMail({
       from: fromAddress,
-      to: options.to,
+      to: targetTo,
       subject: options.subject,
       text: options.text || options.html?.replace(/<[^>]*>?/gm, ''),
       html: options.html,
@@ -118,10 +132,20 @@ export async function sendEmailAsync(options: EmailOptions): Promise<SendResult>
     };
   } catch (error: unknown) {
     const latencyMs = Date.now() - startTime;
-    console.error('Email sending failed:', error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const isGoogle421 = errMsg.includes('421') || (error as { responseCode?: number })?.responseCode === 421;
+    
+    if (isGoogle421) {
+      console.warn('⚠️ Google SMTP 421 Rate Limit / Temporary Deferral encountered. Google throttled or held message at DATA command:', errMsg);
+    } else {
+      console.error('Email sending failed:', error);
+    }
+
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown mailer error',
+      error: isGoogle421
+        ? 'Gmail 421 Temporary System Problem: Google burst limit or sender rate limit reached. Delaying next dispatch.'
+        : errMsg,
       isSimulated: false,
       timestamp: new Date().toISOString(),
       latencyMs,
