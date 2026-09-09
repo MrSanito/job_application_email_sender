@@ -1,55 +1,46 @@
 import { Lead } from '@/types';
 
-export const DEFAULT_SUBJECT_TEMPLATE = 'Quick question regarding {{company}} / Vishal';
+export const DEFAULT_SUBJECT_TEMPLATE = 'Full-Stack / AI Voice Developer — open to opportunities';
 
 export const FALLBACK_TEMPLATES = [
   {
-    subject: 'Full-Stack Developer / SoloBuild AI background — {{company}}',
+    subject: 'Full-Stack / AI Voice Developer — open to opportunities',
     body: `Hi {{name}},
 
-I've been following {{company}}'s work in {{catName}} and wanted to reach out directly regarding open engineering / full-stack developer roles.
+I'm Vishal, a full-stack developer (MERN + AI voice systems). Recently I built a production AI voice agent handling ~1,000 calls/day across multiple clients — sales and HR hiring pipelines — on a Pipecat pipeline with real-time STT/TTS and a call queue backend (Node, BullMQ, Redis). I've also built a real-time multiplayer platform with a full auth system (DPoP, rotating refresh tokens, device-level session management).
 
-I'm a hands-on full-stack developer (Founding Dev at SoloBuild AI) experienced in building end-to-end web apps and AI voice/calling agent pipelines (Next.js, TypeScript, Node.js, PostgreSQL/MongoDB, Redis queues, Pipecat, Gemini, Plivo, STT/TTS).
+Looking at {{company}}'s work in {{catName}} and wanted to check — any full-stack or AI/voice engineering openings on your team right now?
 
-Attached my resume for quick reference. If you're open to a brief conversation, I'd love to connect.
-
-Portfolio: https://zynito.in
-
-Best regards,
-Vishal Nishad
-Full-Stack Developer`,
-  },
-  {
-    subject: '{{company}} + Vishal (Full-Stack Developer)',
-    body: `Hey {{name}},
-
-Wanted to send a quick note regarding potential engineering roles at {{company}}.
-
-I'm a full-stack developer with experience shipping complete web products, async backend pipelines, and real-time AI voice calling agents at SoloBuild AI (Next.js, Node.js, TypeScript, PostgreSQL, Redis, Pipecat, Gemini, Plivo).
-
-My resume is attached with project details. Would love to chat if you're looking for an engineer who moves fast.
-
-Portfolio: https://zynito.in
-
-Thanks,
-Vishal Nishad
-Full-Stack Developer`,
-  },
-  {
-    subject: 'Exploring full-stack opportunities at {{company}}',
-    body: `Hello {{name}},
-
-Reaching out to see if {{company}} is currently exploring new full-stack or backend additions to the engineering team.
-
-As a founding developer at SoloBuild AI, I've built full-stack web applications, resilient backend queue architectures, and AI voice agent workflows end-to-end. 
-
-Attached my resume for details. If the timing works, I'd be glad to jump on a short sync.
-
-Portfolio: https://zynito.in
+GitHub: github.com/MrSanito
 
 Best,
-Vishal Nishad
-Full-Stack Developer`,
+Vishal`,
+  },
+  {
+    subject: 'Full-Stack / AI Voice Developer — {{company}}',
+    body: `Hi {{name}},
+
+I'm Vishal, a full-stack developer (MERN + AI voice systems). Recently I built a production AI voice agent handling ~1,000 calls/day across multiple clients — sales and HR hiring pipelines — on a Pipecat pipeline with real-time STT/TTS and a call queue backend (Node, BullMQ, Redis). I've also built a real-time multiplayer platform with a full auth system (DPoP, rotating refresh tokens, device-level session management).
+
+Looking at {{company}}'s work in {{catName}} and wanted to check — any full-stack or AI/voice engineering openings on your team right now?
+
+GitHub: github.com/MrSanito
+
+Best,
+Vishal`,
+  },
+  {
+    subject: 'Exploring Full-Stack / AI Voice Roles at {{company}}',
+    body: `Hi {{name}},
+
+I'm Vishal, a full-stack developer (MERN + AI voice systems). Recently I built a production AI voice agent handling ~1,000 calls/day across multiple clients — sales and HR hiring pipelines — on a Pipecat pipeline with real-time STT/TTS and a call queue backend (Node, BullMQ, Redis). I've also built a real-time multiplayer platform with a full auth system (DPoP, rotating refresh tokens, device-level session management).
+
+Looking at {{company}}'s work in {{catName}} and wanted to check — any full-stack or AI/voice engineering openings on your team right now?
+
+GitHub: github.com/MrSanito
+
+Best,
+Vishal`,
   },
 ];
 
@@ -82,8 +73,13 @@ export function renderTemplate(template: string, lead: Partial<Lead>, extraParam
   const replacements: Record<string, string> = {
     '{{name}}': salutationName,
     '{{company}}': cleanCompany,
-    '{{catName}}': lead.catName || 'Engineering',
-    '{{category}}': lead.catName || 'Engineering',
+    '{{catName}}': lead.catName || 'software & engineering',
+    '{{category}}': lead.catName || 'software & engineering',
+    '{{space}}': lead.catName || 'software & tech',
+    '{{product}}': lead.catName || 'products',
+    '[name]': salutationName,
+    '[company]': cleanCompany,
+    '[space/product]': lead.catName || 'software & tech',
     '{{jobTitle}}': lead.catName || 'Developer',
     '{{email}}': lead.email || '',
     '{{address}}': lead.address || 'Remote / Hybrid',

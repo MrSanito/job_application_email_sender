@@ -227,49 +227,49 @@ export interface AntiSpamStructureArchetype {
 
 export const ANTI_SPAM_ARCHETYPES: AntiSpamStructureArchetype[] = [
   {
-    id: 'product-builder',
-    name: 'Direct Product & Builder Angle',
-    structuralPattern: 'Short 2-3 paragraph structure: Direct observation of their tech/domain -> Full-stack & AI calling agent background at SoloBuild AI -> Concrete way to contribute -> Quick ask.',
-    openingStyle: 'Open directly with a genuine, specific observation about what the company builds or solves (zero generic flattery).',
-    bodyStyle: 'Highlight founding developer background at SoloBuild AI building full-stack applications (Next.js, Node, TypeScript, PostgreSQL/MongoDB) and AI voice/calling agent pipelines (Pipecat, Gemini, Plivo, STT/TTS).',
-    ctaStyle: 'Ask for a quick 5-minute chat if they are exploring full-stack additions. Mention attached resume.',
-    subjectGuidance: 'e.g. "[Company] + Vishal (Full-Stack Dev)" or "Full-Stack Developer / SoloBuild AI background" or "[Company] engineering / Vishal"',
+    id: 'production-voice-systems',
+    name: 'Production Voice Systems & Full-Stack Angle',
+    structuralPattern: 'Direct intro -> MERN + AI voice systems handling ~1,000 calls/day on Pipecat + BullMQ/Redis -> Real-time multiplayer platform with DPoP auth -> Inquire about [Company] openings -> GitHub link & signoff.',
+    openingStyle: 'Natural greeting by first name (or "Hi there," / "Hello," if no individual name). Direct opener introducing role.',
+    bodyStyle: 'Highlight production AI voice agent handling ~1,000 calls/day across clients (sales and HR hiring pipelines) on Pipecat with real-time STT/TTS and Node/BullMQ/Redis queue backend, plus real-time multiplayer platform with DPoP auth.',
+    ctaStyle: 'Ask if there are any full-stack or AI/voice engineering openings on their team right now.',
+    subjectGuidance: 'e.g. "Full-Stack / AI Voice Developer — open to opportunities" or "Full-Stack / AI Voice Developer — [Company]"',
   },
   {
-    id: 'ultra-concise',
+    id: 'ultra-concise-builder',
     name: 'Ultra-Concise 3-Sentence Note',
-    structuralPattern: 'Tight 3-sentence note (under 60 words total): Direct intro -> Core stack & SoloBuild AI founding background -> Attached resume & portfolio https://zynito.in.',
+    structuralPattern: 'Tight 3-sentence note: Direct introduction -> Core production achievements (~1,000 calls/day voice agent & DPoP multiplayer auth) -> Check for engineering openings at [Company] + GitHub.',
     openingStyle: 'Cut straight to the point without introductory throat-clearing.',
-    bodyStyle: 'State role and expertise in 1 crisp sentence: hands-on full-stack developer (Next.js, TypeScript, Node.js, async queues, and AI voice calling agents).',
-    ctaStyle: 'Casual CTA: "Attached my resume with project highlights — let me know if you are open to connecting."',
-    subjectGuidance: 'e.g. "quick question re: [Company] tech" or "full-stack role at [Company]?" or "re: [Company] engineering"',
+    bodyStyle: 'State background crisply: full-stack developer (MERN + AI voice systems) who built ~1k calls/day Pipecat voice pipelines and secure multiplayer systems.',
+    ctaStyle: 'Check if there are any open full-stack or AI/voice roles at [Company].',
+    subjectGuidance: 'e.g. "Full-Stack / AI Voice Developer — open to opportunities" or "Full-stack / voice AI openings at [Company]?"',
   },
   {
     id: 'systems-architecture',
-    name: 'Full-Stack Architecture & High Velocity',
-    structuralPattern: 'Speed & ownership framing: An engineer who takes full-stack features and voice AI systems from 0 to deployed production with minimal handholding.',
+    name: 'Systems & Real-Time Infrastructure Angle',
+    structuralPattern: 'Systems & velocity framing: Full-stack + AI voice engineer -> Scaling audio pipelines with Pipecat, BullMQ, Redis, and DPoP session auth -> Reaching out regarding [Company] opportunities.',
     openingStyle: 'Friendly, peer-to-peer technical greeting.',
-    bodyStyle: 'Focus on shipping end-to-end: clean frontend interfaces, resilient backend APIs, async Redis queues, and real-time voice agent workflows.',
-    ctaStyle: 'Ask if their engineering team has upcoming full-stack needs. Mention attached resume.',
-    subjectGuidance: 'e.g. "Vishal Nishad — Full-Stack Developer (Next.js / Node / Voice AI)" or "Exploring software roles at [Company]"',
+    bodyStyle: 'Focus on shipping end-to-end: real-time voice agent infrastructure (Pipecat, STT/TTS, BullMQ/Redis) and resilient MERN backend architectures.',
+    ctaStyle: 'Inquire if their engineering team is currently looking for full-stack or AI/voice talent.',
+    subjectGuidance: 'e.g. "Full-Stack / AI Voice Developer — [Company]" or "[Company] + Vishal (Full-Stack / Voice AI)"',
   },
   {
-    id: 'inquisitive-sync',
-    name: 'Conversational Inquisitive Angle',
-    structuralPattern: 'Conversational curiosity: Reaching out to check on engineering team growth -> Quick snapshot of hands-on full-stack & AI calling agent experience -> Resume attached.',
-    openingStyle: 'Inquire naturally about their current engineering roadmap or open developer seats.',
-    bodyStyle: 'Explain background building SoloBuild AI and handling frontend, backend, and voice infrastructure end-to-end.',
-    ctaStyle: 'Low-pressure ask for a short introductory exchange if timing aligns.',
-    subjectGuidance: 'e.g. "Question regarding [Company] engineering" or "[Company] software roles / Vishal"',
+    id: 'conversational-inquiry',
+    name: 'Conversational Team Outreach Angle',
+    structuralPattern: 'Conversational outreach: Reaching out regarding [Company]\'s product/space -> Snapshot of hands-on MERN, ~1k calls/day Pipecat voice agent, and DPoP auth -> GitHub link -> Low-friction signoff.',
+    openingStyle: 'Natural note referencing their work in their space/product.',
+    bodyStyle: 'Explain background building production AI voice systems (sales & HR pipelines) and full-stack platforms.',
+    ctaStyle: 'Low-pressure check if they have open developer seats in full-stack or AI/voice.',
+    subjectGuidance: 'e.g. "Exploring Full-Stack / AI Voice Roles at [Company]" or "Full-Stack / AI Voice Developer — open to opportunities"',
   },
   {
     id: 'execution-impact',
-    name: 'Execution & Practical Impact Angle',
-    structuralPattern: 'Bullet/highlight format or punchy 2-paragraph flow: Brief intro -> 2 concise bullet points highlighting full-stack delivery and AI voice agent pipelines -> Low-friction signoff.',
-    openingStyle: 'Natural, brief greeting referencing their engineering domain.',
-    bodyStyle: 'Use 2 crisp bullet points or 2 tight sentences showing immediate impact (shipping full-stack features, building robust backend pipelines/voice agents).',
-    ctaStyle: 'Mention attached resume and portfolio: https://zynito.in. Ask for a quick touchbase.',
-    subjectGuidance: 'e.g. "Full-stack developer interested in [Company]" or "Engineering at [Company] / Vishal Nishad"',
+    name: 'Execution & High-Impact Delivery Angle',
+    structuralPattern: 'Punchy 2-paragraph flow: Brief intro -> Key production highlights (Pipecat voice agent at 1,000 calls/day, Node/BullMQ/Redis queue, DPoP auth multiplayer) -> Question on team openings -> GitHub signoff.',
+    openingStyle: 'Natural, brief greeting referencing their engineering team.',
+    bodyStyle: 'Crisp sentences showing immediate technical depth across MERN, real-time STT/TTS pipelines, and async backend queues.',
+    ctaStyle: 'Ask if their team has upcoming full-stack or AI/voice engineering openings.',
+    subjectGuidance: 'e.g. "[Company] engineering / Vishal (Full-Stack & Voice AI)" or "Full-Stack / AI Voice Developer — open to opportunities"',
   },
 ];
 
@@ -294,17 +294,17 @@ export async function generateOnTheSpotEmail(
   // Randomized temperature between 0.78 and 0.92 for high natural variability
   const dynamicTemperature = Number((0.78 + Math.random() * 0.14).toFixed(2));
 
-  // Default candidate profile from verified resume
+  // Default candidate profile matching the user's verified background
   const profile: CandidateProfile = {
-    name: candidateProfile?.name || 'Vishal Nishad',
-    role: candidateProfile?.role || 'Full-Stack Developer',
+    name: candidateProfile?.name || 'Vishal',
+    role: candidateProfile?.role || 'Full-Stack / AI Voice Developer',
     skills:
       candidateProfile?.skills ||
-      'Next.js, React, Node.js, TypeScript, PostgreSQL, MongoDB, Redis, BullMQ, AI Voice & Calling Agents (Pipecat, Gemini, Plivo, STT/TTS)',
-    portfolioUrl: candidateProfile?.portfolioUrl || 'https://zynito.in',
+      'MERN (MongoDB, Express, React, Node.js), TypeScript, AI Voice Systems (Pipecat, real-time STT/TTS), BullMQ, Redis, DPoP auth, session management',
+    portfolioUrl: candidateProfile?.portfolioUrl || 'github.com/MrSanito',
     experienceSummary:
       candidateProfile?.experienceSummary ||
-      'Founding Developer at SoloBuild AI building full-stack web applications, async queue pipelines, and AI voice/calling agent systems (Pipecat, Gemini, Plivo, STT/TTS) end-to-end.',
+      'Built a production AI voice agent handling ~1,000 calls/day across multiple clients (sales and HR hiring pipelines) on a Pipecat pipeline with real-time STT/TTS and a call queue backend (Node, BullMQ, Redis). Also built a real-time multiplayer platform with a full auth system (DPoP, rotating refresh tokens, device-level session management).',
   };
 
   if (!keySelection) {
@@ -351,15 +351,11 @@ export async function generateOnTheSpotEmail(
     ? `Greet the contact naturally by first name: "${randomSalutation} ${contactName.split(' ')[0]},"`
     : `No individual contact/HR name is provided. Greet naturally as "Hi there," or "Hello," (STRICT RULE: Do NOT write "team", NEVER use "Hi ${companyName} team," or "Hi team," or "Dear team").`;
 
-  // Sign-off variation pool
-  const signoffs = ['Best,', 'Thanks,', 'Cheers,', 'Warm regards,', 'Best regards,', 'Talk soon,'];
-  const randomSignoff = signoffs[Math.floor(Math.random() * signoffs.length)];
-
-  const systemPrompt = `You are a cold email deliverability and outreach expert writing a short, authentic, personalized cold email from a candidate reaching out directly regarding open full-stack / backend developer roles.
+  const systemPrompt = `You are a cold outreach email expert writing a short, authentic, personalized cold email from a developer reaching out directly regarding open full-stack or AI/voice engineering roles.
 
 ANTI-SPAM & ANTI-FINGERPRINTING DIRECTIVES (CRITICAL):
-- Avoid formulaic spam patterns, boilerplate sentence openers, or robotic structural fingerprints.
-- DO NOT use generic spam phrases like: "I hope this email finds you well", "I came across your company", "I was impressed by", "I am writing to express my eager interest", "cutting-edge", "game-changer", "world-class", "if you need an extra pair of hands".
+- Avoid formulaic spam patterns, robotic templates, or generic fluff.
+- DO NOT use generic spam openers like: "I hope this email finds you well", "I came across your company", "I was impressed by", "I am writing to express my eager interest", "cutting-edge", "game-changer", "world-class".
 - Adopt this specific structural angle for this email: [${archetype.name}]
 - Structural guidance: ${archetype.structuralPattern}
 - Opening guidance: ${archetype.openingStyle}
@@ -367,36 +363,47 @@ ANTI-SPAM & ANTI-FINGERPRINTING DIRECTIVES (CRITICAL):
 - CTA guidance: ${archetype.ctaStyle}
 - Subject Line style: ${archetype.subjectGuidance}
 
-Context:
-- Company: ${companyName}
-- Contact: ${hasSpecificContactName ? contactName : 'Engineering Team'}
-- Website: ${lead.website || 'N/A'}
-- Industry/focus: ${lead.catName || 'Software Engineering'}
+Candidate Profile & Technical Proof Points:
+- Name: Vishal
+- Role: Full-stack developer (MERN + AI voice systems)
+- Core Accomplishment 1: Built a production AI voice agent handling ~1,000 calls/day across multiple clients — sales and HR hiring pipelines — on a Pipecat pipeline with real-time STT/TTS and a call queue backend (Node, BullMQ, Redis).
+- Core Accomplishment 2: Built a real-time multiplayer platform with a full auth system (DPoP, rotating refresh tokens, device-level session management).
+- Company Context: Reaching out to ${companyName} (${lead.catName || 'software / tech space'}).
+- Goal: Check if they have any full-stack or AI/voice engineering openings on their team right now.
 
 Strict Content & Formatting Rules:
 1. Salutation: ${salutationRule}
-2. Position candidate honestly: Founding Developer at SoloBuild AI, hands-on full-stack developer (${profile.skills}).
-3. Length: 55–90 words (crisp, human, easy to read on mobile).
-4. Sign-off: End with "${randomSignoff}\\n${profile.name}\\nFull-Stack Developer\\nPortfolio: ${profile.portfolioUrl || 'https://zynito.in'}"
-5. URLs: Include ONLY ${profile.portfolioUrl || 'https://zynito.in'} in the signature. Do NOT include any other URLs (no voice.solobuildai.com, no GitHub, no LinkedIn in the email body text — all links and full project details are in the attached resume).
-6. Mention that resume is attached.
-7. Output ONLY valid JSON: {"subject": "...", "htmlBody": "...", "textBody": "..."}. Subject under 8 words. No markdown fences.`;
+2. Accurately highlight:
+   - "I'm Vishal, a full-stack developer (MERN + AI voice systems)."
+   - Production AI voice agent handling ~1,000 calls/day across multiple clients (sales and HR hiring pipelines) on a Pipecat pipeline with real-time STT/TTS and a call queue backend (Node, BullMQ, Redis).
+   - Real-time multiplayer platform with full auth system (DPoP, rotating refresh tokens, device-level session management).
+   - "Looking at ${companyName}'s work in ${lead.catName || 'tech'} and wanted to check — any full-stack or AI/voice engineering openings on your team right now?"
+3. Length: 60–95 words (crisp, authentic, easy to read on mobile).
+4. Links: Include "GitHub: github.com/MrSanito". Do NOT invent other URLs (no voice.solobuildai.com, no LinkedIn).
+5. Sign-off: End strictly with:
+GitHub: github.com/MrSanito
 
-  const userPrompt = `Write a fresh, authentic job application email tailored for:
+Best,
+Vishal
+6. Output ONLY valid JSON: {"subject": "...", "htmlBody": "...", "textBody": "..."}. Subject under 8 words. No markdown fences.`;
+
+  const userPrompt = `Write a fresh, authentic job inquiry email tailored for:
 Target Recipient & Company:
 - Recipient Name: ${hasSpecificContactName ? contactName : `[No HR Name - Greet as "Hi there," or "Hello,"]`}
 - Company: ${companyName}
-- Industry / Focus: ${lead.catName || 'Software Development'}
+- Space / Product / Focus: ${lead.catName || 'Software & Tech'}
 - Website / Domain: ${lead.website || 'N/A'}
 - City / Location: ${lead.address || 'Remote'}
-- Candidate Notes: ${customInstructions || 'Genuine interest in joining as a full-stack developer.'}
+- Candidate Notes: ${customInstructions || 'Inquiring about full-stack or AI/voice openings.'}
 
-Candidate Profile (from Resume):
-- Name: ${profile.name}
-- Current Role: ${profile.role}
-- Core Skills: ${profile.skills}
-- Portfolio: ${profile.portfolioUrl || 'https://zynito.in'} (include ONLY this link in signature, do NOT add any other URLs in email text)
-- Background: Founding Developer at SoloBuild AI — built and shipped full-stack web applications, async Redis/BullMQ pipelines, and AI voice/calling agent systems (Pipecat, Gemini, Plivo, STT/TTS) end-to-end.`;
+Candidate Profile:
+- Name: Vishal
+- Role: Full-Stack Developer (MERN + AI voice systems)
+- Voice Agent Experience: Built production AI voice agent handling ~1,000 calls/day across multiple clients (sales and HR hiring pipelines) on a Pipecat pipeline with real-time STT/TTS and a call queue backend (Node, BullMQ, Redis).
+- Auth & Real-Time Experience: Built a real-time multiplayer platform with a full auth system (DPoP, rotating refresh tokens, device-level session management).
+- Ask: Looking at ${companyName}'s work and checking if there are any full-stack or AI/voice engineering openings on their team right now.
+- GitHub: github.com/MrSanito
+- Sign-off: Best, Vishal`;
 
   // Rotate through key and model combinations
   for (let kIdx = 0; kIdx < keysToTry.length; kIdx++) {
@@ -425,17 +432,16 @@ Candidate Profile (from Resume):
         const modelUsedLabel = `${currentModelName} (Key #${keyNumber || kIdx + 1} of ${allKeys.length}) [${archetype.name}]`;
         const keyUsedLabel = `Key #${keyNumber || kIdx + 1} of ${allKeys.length}`;
 
-        // URL Sanitization: Ensure NO voice.solobuildai.com, github, or linkedin URLs exist in the email body (only zynito.in)
+        // URL Sanitization: Keep github.com/MrSanito, sanitize unneeded/hallucinated third-party links
         const sanitizeUrlReferences = (str: string) => {
           if (!str) return '';
           return str
             .replace(/https?:\/\/voice\.solobuildai\.com[^\s<>"']*/gi, '')
             .replace(/voice\.solobuildai\.com/gi, '')
-            .replace(/https?:\/\/(?:www\.)?github\.com\/[^\s<>"']*/gi, '')
             .replace(/https?:\/\/(?:www\.)?linkedin\.com\/[^\s<>"']*/gi, '');
         };
 
-        const cleanedSubject = sanitizeUrlReferences(parsed.subject || `Quick question regarding ${lead.company || 'your team'} / ${profile.name}`);
+        const cleanedSubject = sanitizeUrlReferences(parsed.subject || `Full-Stack / AI Voice Developer — ${companyName}`);
         const cleanedHtml = sanitizeUrlReferences(parsed.htmlBody || `<p>${parsed.textBody?.replace(/\n/g, '<br/>')}</p>`);
         const cleanedText = sanitizeUrlReferences(parsed.textBody || parsed.htmlBody?.replace(/<[^>]*>?/gm, ''));
 
