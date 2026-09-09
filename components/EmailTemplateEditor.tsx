@@ -57,6 +57,7 @@ export default function EmailTemplateEditor({
   const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const [copiedPreview, setCopiedPreview] = useState(false);
+  const [companyContext, setCompanyContext] = useState<string | null>(null);
 
   const sampleLead: Lead = previewLead || {
     id: 'sample-1',
@@ -76,7 +77,7 @@ export default function EmailTemplateEditor({
     toast.info(`Inserted ${tag} into email body`);
   };
 
-  // Generate on-the-spot personalized email using LangChain & Gemini
+  // Generate on-the-spot personalized email using Mistral AI + Tavily Web Intelligence
   const handleGenerateOnTheSpotWithAi = async () => {
     try {
       setIsGeneratingAi(true);
@@ -102,8 +103,9 @@ export default function EmailTemplateEditor({
 
       onSubjectChange(data.subject);
       onBodyChange(data.textBody || data.htmlBody.replace(/<[^>]*>?/gm, ''));
+      setCompanyContext(data.companyContext || null);
       setActiveTab('preview');
-      toast.success(`Generated email via ${data.modelUsed || 'Google Gemini AI'} in ${data.latencyMs}ms!`);
+      toast.success(`Generated email via ${data.modelUsed || 'Mistral AI'} in ${data.latencyMs}ms!`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to generate with AI';
       toast.error(msg);
@@ -128,11 +130,11 @@ export default function EmailTemplateEditor({
             <span>Dynamic Email Composer & AI Studio</span>
             <Badge variant="purple" dot>
               <Bot className="w-3 h-3 mr-1" />
-              Gemini GenAI
+              Mistral + Tavily
             </Badge>
           </CardTitle>
           <CardDescription>
-            Craft standard recruitment templates with smart dynamic tags or click to personalize on-the-spot with Gemini.
+            Craft standard recruitment templates with smart dynamic tags or click to research the company on Tavily and generate an authentic pitch with Mistral AI.
           </CardDescription>
         </div>
 
@@ -144,11 +146,11 @@ export default function EmailTemplateEditor({
             size="sm"
             onClick={handleGenerateOnTheSpotWithAi}
             loading={isGeneratingAi}
-            loadingText="Crafting with Gemini..."
+            loadingText="Researching Company & Drafting..."
             className="text-xs"
           >
             <Wand2 className="w-3.5 h-3.5 text-indigo-950" />
-            <span>Gemini AI Personalize</span>
+            <span>Mistral + Tavily Research</span>
           </Button>
 
           {/* Mode Switcher */}
@@ -282,6 +284,18 @@ export default function EmailTemplateEditor({
                 <span>{copiedPreview ? 'Copied' : 'Copy'}</span>
               </Button>
             </div>
+
+            {companyContext && (
+              <div className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-xs text-cyan-200 space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-cyan-300 text-[11px] uppercase tracking-wider">
+                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Tavily Web Intelligence & Company Context</span>
+                </div>
+                <p className="text-slate-300 text-xs leading-relaxed line-clamp-3">
+                  {companyContext}
+                </p>
+              </div>
+            )}
 
             <div>
               <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Subject</div>

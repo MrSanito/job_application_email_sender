@@ -1,11 +1,11 @@
+import { ChatMistralAI } from '@langchain/mistralai';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
+import { tavily } from '@tavily/core';
 import { Lead } from '@/types';
 import {
   renderTemplate,
   getRandomFallbackTemplate,
-  DEFAULT_BODY_TEMPLATE,
-  DEFAULT_SUBJECT_TEMPLATE,
 } from './template-engine';
 
 export interface DynamicEmailGenerationResult {
@@ -14,7 +14,9 @@ export interface DynamicEmailGenerationResult {
   textBody: string;
   isAiGenerated: boolean;
   modelUsed?: string;
-  keyUsed?: string; // e.g. "Key #1 of 2"
+  keyUsed?: string;
+  companyContext?: string;
+  tavilyQuery?: string;
   latencyMs: number;
 }
 
@@ -27,7 +29,52 @@ export interface CandidateProfile {
 }
 
 /**
- * Parse and categorize Gemini / Google GenAI API errors (409 Conflict, 429 Rate Limit, 403 Quota, 503 Overload, etc.)
+ * Cache for Tavily company research to avoid repeated queries and respect rate limits
+ */
+const companyResearchCache = new Map<string, { context: string; timestamp: number }>();
+
+/**
+ * Perform live internet search with Tavily to gather intelligence & context about target company
+ */
+export async function searchCompanyContextWithTavily(
+  companyName: string,
+  website?: string,
+  category?: string
+): Promise<{ query: string; context: string; sources: string[] }> {
+  const apiKey = (process.env.TAVILY_API_KEY || '').trim().replace(/^["']|["']$/g, '');
+  const defaultFallback = `${companyName} operates in ${category || 'the software and technology'} space.`;
+
+  if (!apiKey || !companyName || companyName.toLowerCase() === 'your company' || companyName.toLowerCase() === 'n/a') {
+    return { query: '', context: defaultFallback, sources: [] };
+  }
+
+  const cacheKey = `${companyName.toLowerCase().trim()}_${(category || '').toLowerCase().trim()}`;
+  const cached = companyResearchCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < 1000 * 60 * 60) {
+    return { query: `[cached] ${companyName}`, context: cached.context, sources: [] };
+  }
+
+  try {
+    const tvly = tavily({ apiKey });
+    const query = `${companyName} ${website || ''} ${category || ''} software product overview engineering`.trim();
+    const searchRes = await tvly.search(query, {
+      maxResults: 2,
+    });
+
+    const snippets = searchRes.results?.map((r) => r.content).filter(Boolean) || [];
+    const sources = searchRes.results?.map((r) => r.url).filter(Boolean) || [];
+    const context = snippets.join('\n\n').slice(0, 1000) || defaultFallback;
+
+    companyResearchCache.set(cacheKey, { context, timestamp: Date.now() });
+    return { query, context, sources };
+  } catch (err) {
+    console.warn(`[Tavily Search Warning] Could not search context for "${companyName}":`, err instanceof Error ? err.message : err);
+    return { query: companyName, context: defaultFallback, sources: [] };
+  }
+}
+
+/**
+ * Parse and categorize Mistral / Gemini API errors
  */
 export function parseApiError(err: unknown): {
   code: number | string;
@@ -42,46 +89,130 @@ export function parseApiError(err: unknown): {
   let type = 'General Error';
   let isRetryable = true;
 
-  if (message.includes('429') || msgLower.includes('resource_exhausted') || msgLower.includes('quota exceeded') || msgLower.includes('rate limit') || msgLower.includes('too many requests')) {
+  if (message.includes('429') || msgLower.includes('rate limit') || msgLower.includes('rate_limited') || msgLower.includes('too many requests')) {
     code = 429;
-    type = 'Rate Limit / Quota Exhausted';
+    type = 'Rate Limit Exceeded';
     isRetryable = true;
-  } else if (message.includes('409') || msgLower.includes('conflict') || msgLower.includes('already exists') || msgLower.includes('aborted')) {
-    code = 409;
-    type = 'Conflict / State Error';
-    isRetryable = true;
-  } else if (message.includes('403') || msgLower.includes('permission_denied') || msgLower.includes('forbidden') || msgLower.includes('api key not valid') || msgLower.includes('invalid_api_key')) {
+  } else if (message.includes('401') || message.includes('403') || msgLower.includes('unauthorized') || msgLower.includes('forbidden') || msgLower.includes('invalid_api_key')) {
     code = 403;
-    type = 'Forbidden / Invalid Key / Quota Block';
-    isRetryable = true;
-  } else if (message.includes('503') || msgLower.includes('unavailable') || msgLower.includes('high demand') || msgLower.includes('overloaded') || msgLower.includes('backend error')) {
+    type = 'Authentication / Key Error';
+    isRetryable = false;
+  } else if (message.includes('503') || msgLower.includes('unavailable') || msgLower.includes('overloaded')) {
     code = 503;
-    type = 'Service Unavailable / Overloaded';
+    type = 'Service Unavailable';
     isRetryable = true;
   } else if (message.includes('500') || msgLower.includes('internal error')) {
     code = 500;
     type = 'Internal Server Error';
     isRetryable = true;
-  } else if (message.includes('404') || msgLower.includes('not found') || msgLower.includes('unsupported model')) {
-    code = 404;
-    type = 'Model Not Found';
-    isRetryable = true;
   } else if (message.includes('400') || msgLower.includes('invalid_argument') || msgLower.includes('bad request')) {
     code = 400;
-    type = 'Bad Request / Invalid Argument';
-    isRetryable = true;
+    type = 'Bad Request';
+    isRetryable = false;
   }
 
   return { code, type, message, isRetryable };
 }
 
 /**
- * Collect all configured Google/Gemini API keys from environment (supports unlimited keys & lists)
+ * Verified active Mistral AI models for rotation and load balancing
+ */
+export const MISTRAL_ROTATION_MODELS: string[] = [
+  'open-mistral-7b',
+  'open-mistral-nemo',
+  'ministral-8b-latest',
+  'mistral-tiny',
+  'ministral-3b-latest',
+  'codestral-latest',
+];
+
+/**
+ * Collect all configured Mistral API keys from environment
+ */
+export function getAllMistralApiKeys(): string[] {
+  const candidates: string[] = [];
+
+  const commaLists = [
+    process.env.MISTRAL_API_KEYS,
+    process.env.MISTRAL_API_KEY_LIST,
+  ];
+  for (const list of commaLists) {
+    if (list && typeof list === 'string') {
+      const parts = list.split(/[,;\n]/).map((k) => k.trim());
+      candidates.push(...parts);
+    }
+  }
+
+  for (let i = 1; i <= 10; i++) {
+    candidates.push(
+      process.env[`MISTRAL_API_KEY${i}`] || '',
+      process.env[`MISTRAL_API_KEY_${i}`] || ''
+    );
+  }
+
+  candidates.push(
+    process.env.MISTRAL_API_KEY || '',
+    process.env.NEXT_PUBLIC_MISTRAL_API_KEY || ''
+  );
+
+  const clean = candidates
+    .map((k) => (typeof k === 'string' ? k.trim().replace(/^["']|["']$/g, '') : ''))
+    .filter((k) => k.length > 8);
+
+  return Array.from(new Set(clean));
+}
+
+/**
+ * Pick a random Mistral API key from the pool
+ */
+export function getRandomMistralApiKey(customApiKey?: string): {
+  key: string;
+  keyIndex: number;
+  totalKeys: number;
+} | null {
+  if (customApiKey) {
+    return { key: customApiKey, keyIndex: 1, totalKeys: 1 };
+  }
+
+  const keys = getAllMistralApiKeys();
+  if (keys.length === 0) return null;
+
+  const randomIndex = Math.floor(Math.random() * keys.length);
+  return {
+    key: keys[randomIndex],
+    keyIndex: randomIndex + 1,
+    totalKeys: keys.length,
+  };
+}
+
+/**
+ * Initialize ChatMistralAI instance
+ */
+export function getMistralModel(
+  apiKey: string,
+  modelName: string = 'open-mistral-7b',
+  temperature: number = 0.7
+): ChatMistralAI | null {
+  if (!apiKey) return null;
+
+  try {
+    return new ChatMistralAI({
+      model: modelName,
+      apiKey,
+      temperature,
+      maxRetries: 2,
+    });
+  } catch (error) {
+    console.error(`Error initializing ChatMistralAI (${modelName}):`, error);
+    return null;
+  }
+}
+
+/**
+ * Collect all configured Google/Gemini API keys (secondary fallback)
  */
 export function getAllGeminiApiKeys(): string[] {
   const candidates: string[] = [];
-
-  // 1. Comma / newline separated lists
   const commaLists = [
     process.env.GOOGLE_API_KEYS,
     process.env.GEMINI_API_KEYS,
@@ -95,41 +226,20 @@ export function getAllGeminiApiKeys(): string[] {
     }
   }
 
-  // 2. Numbered keys (1 through 25)
   for (let i = 1; i <= 25; i++) {
     candidates.push(
       process.env[`GOOGLE_API_KEY${i}`] || '',
       process.env[`GOOGLE_API_KEY_${i}`] || '',
       process.env[`GEMINI_API_KEY${i}`] || '',
-      process.env[`GEMINI_API_KEY_${i}`] || '',
-      process.env[`GOOGLE-API-KEY${i}`] || '',
-      process.env[`GOOGLE-API-KEY-${i}`] || ''
+      process.env[`GEMINI_API_KEY_${i}`] || ''
     );
   }
 
-  // 3. Base keys
   candidates.push(
     process.env.GOOGLE_API_KEY || '',
     process.env.GEMINI_API_KEY || '',
     process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
   );
-
-  // 4. Dynamic scan for any matching environment variables
-  for (const [k, v] of Object.entries(process.env)) {
-    const upper = k.toUpperCase();
-    if (
-      (upper.startsWith('GOOGLE_API_KEY') ||
-        upper.startsWith('GEMINI_API_KEY') ||
-        upper.startsWith('GOOGLE-API-KEY')) &&
-      typeof v === 'string'
-    ) {
-      if (v.includes(',')) {
-        candidates.push(...v.split(',').map((s) => s.trim()));
-      } else {
-        candidates.push(v);
-      }
-    }
-  }
 
   const clean = candidates
     .map((k) => (typeof k === 'string' ? k.trim().replace(/^["']|["']$/g, '') : ''))
@@ -138,67 +248,18 @@ export function getAllGeminiApiKeys(): string[] {
   return Array.from(new Set(clean));
 }
 
-/**
- * Pick a random Google Gemini API key from the pool to balance utilization
- */
-export function getRandomGeminiApiKey(customApiKey?: string): {
-  key: string;
-  keyIndex: number;
-  totalKeys: number;
-} | null {
-  if (customApiKey) {
-    return { key: customApiKey, keyIndex: 1, totalKeys: 1 };
-  }
-
-  const keys = getAllGeminiApiKeys();
-  if (keys.length === 0) return null;
-
-  // Random number selection to evenly distribute load
-  const randomIndex = Math.floor(Math.random() * keys.length);
-  return {
-    key: keys[randomIndex],
-    keyIndex: randomIndex + 1,
-    totalKeys: keys.length,
-  };
-}
-
-/**
- * Verified active Google Gemini models for randomized rotation and load balancing
- */
 export const GEMINI_ROTATION_MODELS: string[] = [
   'gemini-2.5-flash',
   'gemini-3.5-flash-lite',
   'gemini-flash-lite-latest',
-  'gemini-3.5-flash',
-  'gemini-3.1-flash-lite',
 ];
-
-/**
- * Pick a random model from the rotation pool
- */
-export function getRandomGeminiModel(customModel?: string): {
-  model: string;
-  modelIndex: number;
-  totalModels: number;
-} {
-  if (customModel && customModel.trim()) {
-    return { model: customModel.trim(), modelIndex: 1, totalModels: 1 };
-  }
-  const randomIndex = Math.floor(Math.random() * GEMINI_ROTATION_MODELS.length);
-  return {
-    model: GEMINI_ROTATION_MODELS[randomIndex],
-    modelIndex: randomIndex + 1,
-    totalModels: GEMINI_ROTATION_MODELS.length,
-  };
-}
 
 export function getGeminiModel(
   apiKey: string,
   modelName: string = 'gemini-2.5-flash',
-  temperature: number = 0.82
+  temperature: number = 0.8
 ): ChatGoogleGenerativeAI | null {
   if (!apiKey) return null;
-
   try {
     return new ChatGoogleGenerativeAI({
       model: modelName,
@@ -206,8 +267,7 @@ export function getGeminiModel(
       temperature,
       maxRetries: 2,
     });
-  } catch (error) {
-    console.error(`Error initializing ChatGoogleGenerativeAI (${modelName}):`, error);
+  } catch {
     return null;
   }
 }
@@ -274,8 +334,7 @@ export const ANTI_SPAM_ARCHETYPES: AntiSpamStructureArchetype[] = [
 ];
 
 /**
- * Dynamically generate on-the-spot personalized cold email HTML and subject using LangChain + Google Gen AI
- * Uses randomized model, key, temperature, and structural anti-spam archetypes!
+ * Dynamically generate on-the-spot personalized cold email HTML and subject using Mistral AI + Tavily Web Intelligence
  */
 export async function generateOnTheSpotEmail(
   lead: Lead,
@@ -285,54 +344,6 @@ export async function generateOnTheSpotEmail(
   modelOverride?: string
 ): Promise<DynamicEmailGenerationResult> {
   const startTime = Date.now();
-  const keySelection = getRandomGeminiApiKey(apiKeyOverride);
-  const modelSelection = getRandomGeminiModel(modelOverride);
-
-  // Pick a random anti-spam structural archetype per email
-  const archetype = ANTI_SPAM_ARCHETYPES[Math.floor(Math.random() * ANTI_SPAM_ARCHETYPES.length)];
-
-  // Randomized temperature between 0.78 and 0.92 for high natural variability
-  const dynamicTemperature = Number((0.78 + Math.random() * 0.14).toFixed(2));
-
-  // Default candidate profile matching the user's verified background
-  const profile: CandidateProfile = {
-    name: candidateProfile?.name || 'Vishal',
-    role: candidateProfile?.role || 'Full-Stack Developer (MERN + Gen AI)',
-    skills:
-      candidateProfile?.skills ||
-      'MERN (MongoDB, Express, React, Node.js), TypeScript, AI Voice Systems (Pipecat, real-time STT/TTS), BullMQ, Redis, DPoP auth, session management',
-    portfolioUrl: candidateProfile?.portfolioUrl || 'github.com/MrSanito',
-    experienceSummary:
-      candidateProfile?.experienceSummary ||
-      'Built a production AI voice agent handling ~1,000 calls/day across multiple clients (sales and HR hiring pipelines) on a Pipecat pipeline with real-time STT/TTS and a call queue backend (Node, BullMQ, Redis). Also built a real-time multiplayer platform with a full auth system (DPoP, rotating refresh tokens, device-level session management).',
-  };
-
-  if (!keySelection) {
-    // Graceful fallback to dynamic template interpolation with structural rotation
-    const fallbackTpl = getRandomFallbackTemplate();
-    const renderedSubject = renderTemplate(fallbackTpl.subject, lead);
-    const renderedBody = renderTemplate(fallbackTpl.body, lead);
-
-    return {
-      subject: renderedSubject,
-      htmlBody: renderedBody.replace(/\n/g, '<br/>'),
-      textBody: renderedBody,
-      isAiGenerated: false,
-      latencyMs: Date.now() - startTime,
-    };
-  }
-
-  const allKeys = getAllGeminiApiKeys();
-  const keysToTry = apiKeyOverride
-    ? [apiKeyOverride]
-    : [keySelection.key, ...allKeys.filter((k) => k !== keySelection.key)];
-
-  const modelsToTry = modelOverride
-    ? [modelOverride]
-    : [
-        modelSelection.model,
-        ...GEMINI_ROTATION_MODELS.filter((m) => m !== modelSelection.model),
-      ];
 
   const contactName = lead.name?.trim();
   const companyName = lead.company?.trim() || lead.name?.trim() || 'your company';
@@ -343,10 +354,22 @@ export async function generateOnTheSpotEmail(
     contactName.toLowerCase() !== 'recruiter' &&
     (!lead.company || contactName.toLowerCase() !== lead.company.trim().toLowerCase());
 
+  // 1. GATHER COMPANY CONTEXT VIA TAVILY WEB SEARCH
+  const tavilyResult = await searchCompanyContextWithTavily(
+    companyName,
+    lead.website,
+    lead.catName
+  );
+
+  // Pick a random anti-spam structural archetype per email
+  const archetype = ANTI_SPAM_ARCHETYPES[Math.floor(Math.random() * ANTI_SPAM_ARCHETYPES.length)];
+
+  // Randomized temperature between 0.65 and 0.85 for natural human cadence
+  const dynamicTemperature = Number((0.65 + Math.random() * 0.2).toFixed(2));
+
   // Salutation variation pool
   const salutationsWithPerson = ['Hi', 'Hey', 'Hello'];
   const randomSalutation = salutationsWithPerson[Math.floor(Math.random() * salutationsWithPerson.length)];
-  
   const salutationRule = hasSpecificContactName
     ? `Greet the contact naturally by first name: "${randomSalutation} ${contactName.split(' ')[0]},"`
     : `No individual contact/HR name is provided. Greet naturally as "Hi there," or "Hello," (STRICT RULE: Do NOT write "team", NEVER use "Hi ${companyName} team," or "Hi team," or "Dear team").`;
@@ -368,8 +391,7 @@ Candidate Profile & Technical Proof Points:
 - Role: Full-stack developer (MERN + AI voice systems)
 - Core Accomplishment 1: Built a production AI voice agent handling ~1,000 calls/day across multiple clients — sales and HR hiring pipelines — on a Pipecat pipeline with real-time STT/TTS and a call queue backend (Node, BullMQ, Redis).
 - Core Accomplishment 2: Built a real-time multiplayer platform with a full auth system (DPoP, rotating refresh tokens, device-level session management).
-- Company Context: Reaching out to ${companyName} (${lead.catName || 'software / tech space'}).
-- Goal: Check if they have any full-stack or Gen AI engineering openings on their team right now.
+- Goal: Inquire if there are any full-stack or Gen AI engineering openings on their team right now.
 
 Strict Content & Formatting Rules:
 1. Salutation: ${salutationRule}
@@ -377,9 +399,9 @@ Strict Content & Formatting Rules:
    - "I'm Vishal, a full-stack developer (MERN + AI voice systems)."
    - Production AI voice agent handling ~1,000 calls/day across multiple clients (sales and HR hiring pipelines) on a Pipecat pipeline with real-time STT/TTS and a call queue backend (Node, BullMQ, Redis).
    - Real-time multiplayer platform with full auth system (DPoP, rotating refresh tokens, device-level session management).
-   - "Looking at ${companyName}'s work in ${lead.catName || 'tech'} and wanted to check — any full-stack or Gen AI engineering openings on your team right now?"
+   - Natural bridge connecting candidate background to ${companyName}'s product focus based on the web intelligence provided below.
 3. Length: 60–95 words (crisp, authentic, easy to read on mobile).
-4. Links: Include "GitHub: github.com/MrSanito". Do NOT invent other URLs (no voice.solobuildai.com, no LinkedIn).
+4. Links: Include "GitHub: github.com/MrSanito". Do NOT invent other URLs.
 5. Sign-off: End strictly with:
 GitHub: github.com/MrSanito
 
@@ -391,86 +413,126 @@ Vishal
 Target Recipient & Company:
 - Recipient Name: ${hasSpecificContactName ? contactName : `[No HR Name - Greet as "Hi there," or "Hello,"]`}
 - Company: ${companyName}
-- Space / Product / Focus: ${lead.catName || 'Software & Tech'}
-- Website / Domain: ${lead.website || 'N/A'}
+- Space / Category: ${lead.catName || 'Software & Technology'}
+- Website: ${lead.website || 'N/A'}
 - City / Location: ${lead.address || 'Remote'}
 - Candidate Notes: ${customInstructions || 'Inquiring about full-stack or Gen AI openings.'}
+
+Company Live Web Intelligence (gathered from Tavily search):
+"""
+${tavilyResult.context}
+"""
 
 Candidate Profile:
 - Name: Vishal
 - Role: Full-Stack Developer (MERN + Gen AI)
-- Voice Agent Experience: Built production AI voice agent handling ~1,000 calls/day across multiple clients (sales and HR hiring pipelines) on a Pipecat pipeline with real-time STT/TTS and a call queue backend (Node, BullMQ, Redis).
-- Auth & Real-Time Experience: Built a real-time multiplayer platform with a full auth system (DPoP, rotating refresh tokens, device-level session management).
-- Ask: Looking at ${companyName}'s work in ${lead.catName || 'tech'} and checking if there are any full-stack or Gen AI engineering openings on their team right now.
+- Proof Points: ~1k calls/day Pipecat AI voice agent (STT/TTS, BullMQ/Redis) + Real-time multiplayer platform with DPoP auth.
+- Ask: Check if there are any full-stack or Gen AI engineering openings at ${companyName}.
 - GitHub: github.com/MrSanito
 - Sign-off: Best, Vishal`;
 
-  // Rotate through key and model combinations
-  for (let kIdx = 0; kIdx < keysToTry.length; kIdx++) {
-    const currentKey = keysToTry[kIdx];
-    const keyNumber = allKeys.indexOf(currentKey) + 1;
+  // Helper for URL sanitization
+  const sanitizeUrlReferences = (str: string) => {
+    if (!str) return '';
+    return str
+      .replace(/https?:\/\/voice\.solobuildai\.com[^\s<>"']*/gi, '')
+      .replace(/voice\.solobuildai\.com/gi, '')
+      .replace(/https?:\/\/(?:www\.)?linkedin\.com\/[^\s<>"']*/gi, '');
+  };
 
-    for (let mIdx = 0; mIdx < modelsToTry.length; mIdx++) {
-      const currentModelName = modelsToTry[mIdx];
-      const model = getGeminiModel(currentKey, currentModelName, dynamicTemperature);
-      if (!model) continue;
+  // 2. TRY MISTRAL AI MODELS (PRIMARY ENGINE)
+  const mistralKeys = getAllMistralApiKeys();
+  const keysToTry = apiKeyOverride ? [apiKeyOverride] : mistralKeys;
+  const modelsToTry = modelOverride ? [modelOverride] : MISTRAL_ROTATION_MODELS;
 
-      try {
-        const response = await model.invoke([
-          new SystemMessage(systemPrompt),
-          new HumanMessage(userPrompt),
-        ]);
+  if (keysToTry.length > 0) {
+    for (let kIdx = 0; kIdx < keysToTry.length; kIdx++) {
+      const currentKey = keysToTry[kIdx];
+      for (let mIdx = 0; mIdx < modelsToTry.length; mIdx++) {
+        const currentModelName = modelsToTry[mIdx];
+        const model = getMistralModel(currentKey, currentModelName, dynamicTemperature);
+        if (!model) continue;
 
-        let rawText = String(response.content || '').trim();
+        try {
+          const response = await model.invoke([
+            new SystemMessage(systemPrompt),
+            new HumanMessage(userPrompt),
+          ]);
 
-        if (rawText.startsWith('```')) {
-          rawText = rawText.replace(/^```(?:json)?\n?/i, '').replace(/```$/i, '').trim();
-        }
+          let rawText = String(response.content || '').trim();
+          if (rawText.startsWith('```')) {
+            rawText = rawText.replace(/^```(?:json)?\n?/i, '').replace(/```$/i, '').trim();
+          }
 
-        const parsed = JSON.parse(rawText);
+          const parsed = JSON.parse(rawText);
+          const cleanedSubject = sanitizeUrlReferences(parsed.subject || `Full-Stack Developer (MERN + Gen AI) — ${companyName}`);
+          const cleanedHtml = sanitizeUrlReferences(parsed.htmlBody || `<p>${parsed.textBody?.replace(/\n/g, '<br/>')}</p>`);
+          const cleanedText = sanitizeUrlReferences(parsed.textBody || parsed.htmlBody?.replace(/<[^>]*>?/gm, ''));
 
-        const modelUsedLabel = `${currentModelName} (Key #${keyNumber || kIdx + 1} of ${allKeys.length}) [${archetype.name}]`;
-        const keyUsedLabel = `Key #${keyNumber || kIdx + 1} of ${allKeys.length}`;
-
-        // URL Sanitization: Keep github.com/MrSanito, sanitize unneeded/hallucinated third-party links
-        const sanitizeUrlReferences = (str: string) => {
-          if (!str) return '';
-          return str
-            .replace(/https?:\/\/voice\.solobuildai\.com[^\s<>"']*/gi, '')
-            .replace(/voice\.solobuildai\.com/gi, '')
-            .replace(/https?:\/\/(?:www\.)?linkedin\.com\/[^\s<>"']*/gi, '');
-        };
-
-        const cleanedSubject = sanitizeUrlReferences(parsed.subject || `Full-Stack Developer (MERN + Gen AI) — ${companyName}`);
-        const cleanedHtml = sanitizeUrlReferences(parsed.htmlBody || `<p>${parsed.textBody?.replace(/\n/g, '<br/>')}</p>`);
-        const cleanedText = sanitizeUrlReferences(parsed.textBody || parsed.htmlBody?.replace(/<[^>]*>?/gm, ''));
-
-        return {
-          subject: cleanedSubject,
-          htmlBody: cleanedHtml,
-          textBody: cleanedText,
-          isAiGenerated: true,
-          modelUsed: modelUsedLabel,
-          keyUsed: keyUsedLabel,
-          latencyMs: Date.now() - startTime,
-        };
-      } catch (keyErr: unknown) {
-        const errInfo = parseApiError(keyErr);
-        console.warn(
-          `[API Error ${errInfo.code} - ${errInfo.type}] on Model "${currentModelName}" (Key #${keyNumber || kIdx + 1} of ${allKeys.length}). Auto-rotating to next route:`,
-          errInfo.message.slice(0, 120)
-        );
-
-        // For temporary throttling/conflict codes (429, 409, 503), apply jitter delay before next rotation
-        if ([429, 409, 503].includes(Number(errInfo.code))) {
-          await new Promise((resolve) => setTimeout(resolve, 200 + Math.random() * 200));
+          return {
+            subject: cleanedSubject,
+            htmlBody: cleanedHtml,
+            textBody: cleanedText,
+            isAiGenerated: true,
+            modelUsed: `Mistral AI (${currentModelName}) + Tavily Search [${archetype.name}]`,
+            keyUsed: `Mistral Key #${kIdx + 1} of ${keysToTry.length}`,
+            companyContext: tavilyResult.context,
+            tavilyQuery: tavilyResult.query,
+            latencyMs: Date.now() - startTime,
+          };
+        } catch (mErr: unknown) {
+          const errInfo = parseApiError(mErr);
+          console.warn(
+            `[Mistral Error ${errInfo.code}] on model "${currentModelName}". Rotating to next model:`,
+            errInfo.message.slice(0, 100)
+          );
+          if (errInfo.code === 429) {
+            await new Promise((resolve) => setTimeout(resolve, 150));
+          }
         }
       }
     }
   }
 
-  // Graceful fallback if all combinations fail (uses anti-spam rotating fallback templates)
-  const latencyMs = Date.now() - startTime;
+  // 3. FALLBACK TO GEMINI (IF MISTRAL FAILED OR NO MISTRAL KEY CONFIGURED)
+  const geminiKeys = getAllGeminiApiKeys();
+  if (geminiKeys.length > 0) {
+    for (const gKey of geminiKeys) {
+      for (const gModel of GEMINI_ROTATION_MODELS) {
+        const gInstance = getGeminiModel(gKey, gModel, dynamicTemperature);
+        if (!gInstance) continue;
+
+        try {
+          const response = await gInstance.invoke([
+            new SystemMessage(systemPrompt),
+            new HumanMessage(userPrompt),
+          ]);
+
+          let rawText = String(response.content || '').trim();
+          if (rawText.startsWith('```')) {
+            rawText = rawText.replace(/^```(?:json)?\n?/i, '').replace(/```$/i, '').trim();
+          }
+
+          const parsed = JSON.parse(rawText);
+          return {
+            subject: sanitizeUrlReferences(parsed.subject || `Full-Stack Developer (MERN + Gen AI) — ${companyName}`),
+            htmlBody: sanitizeUrlReferences(parsed.htmlBody || `<p>${parsed.textBody?.replace(/\n/g, '<br/>')}</p>`),
+            textBody: sanitizeUrlReferences(parsed.textBody || parsed.htmlBody?.replace(/<[^>]*>?/gm, '')),
+            isAiGenerated: true,
+            modelUsed: `Google Gemini (${gModel}) + Tavily Search [${archetype.name}]`,
+            keyUsed: 'Gemini Fallback',
+            companyContext: tavilyResult.context,
+            tavilyQuery: tavilyResult.query,
+            latencyMs: Date.now() - startTime,
+          };
+        } catch (gErr) {
+          console.warn(`[Gemini Fallback Error] on model "${gModel}":`, gErr);
+        }
+      }
+    }
+  }
+
+  // 4. FINAL FALLBACK TO DYNAMIC TEMPLATE ENGINE
   const fallbackTpl = getRandomFallbackTemplate();
   const renderedSubject = renderTemplate(fallbackTpl.subject, lead);
   const renderedBody = renderTemplate(fallbackTpl.body, lead);
@@ -480,12 +542,83 @@ Candidate Profile:
     htmlBody: renderedBody.replace(/\n/g, '<br/>'),
     textBody: renderedBody,
     isAiGenerated: false,
-    latencyMs,
+    modelUsed: 'Template Engine Fallback',
+    companyContext: tavilyResult.context,
+    tavilyQuery: tavilyResult.query,
+    latencyMs: Date.now() - startTime,
   };
 }
 
 /**
- * Test all available Gemini API keys & active rotation models in the pool
+ * Test Mistral AI and Tavily Search connections
+ */
+export async function testMistralConnection(): Promise<{
+  success: boolean;
+  mistralActive: boolean;
+  tavilyActive: boolean;
+  workingModels: string[];
+  totalKeys: number;
+  message: string;
+  sampleResponse?: string;
+  tavilySnippet?: string;
+}> {
+  const mistralKeys = getAllMistralApiKeys();
+  const tavilyKey = (process.env.TAVILY_API_KEY || '').trim();
+
+  let tavilyActive = false;
+  let tavilySnippet = '';
+  if (tavilyKey) {
+    try {
+      const tvly = tavily({ apiKey: tavilyKey });
+      const tRes = await tvly.search('OpenAI software technology', { maxResults: 1 });
+      if (tRes.results && tRes.results.length > 0) {
+        tavilyActive = true;
+        tavilySnippet = tRes.results[0].content?.slice(0, 140) || 'Active';
+      }
+    } catch (tErr) {
+      console.warn('Tavily connection test error:', tErr);
+    }
+  }
+
+  let mistralActive = false;
+  const workingModels: string[] = [];
+  let sampleResponse = '';
+
+  if (mistralKeys.length > 0) {
+    const keyToTest = mistralKeys[0];
+    for (const mName of MISTRAL_ROTATION_MODELS) {
+      try {
+        const model = getMistralModel(keyToTest, mName, 0.5);
+        if (!model) continue;
+        const res = await model.invoke('Say "Mistral AI online" in 3 words.');
+        mistralActive = true;
+        workingModels.push(mName);
+        if (!sampleResponse) sampleResponse = String(res.content).trim();
+      } catch (mErr) {
+        console.warn(`Mistral test model ${mName} skipped:`, mErr instanceof Error ? mErr.message.slice(0, 80) : mErr);
+      }
+    }
+  }
+
+  const isSuccess = mistralActive || tavilyActive;
+  const message = isSuccess
+    ? `Mistral AI (${workingModels.length} models ready) & Tavily Search (${tavilyActive ? 'Connected' : 'Offline'}) ready for company-enriched email generation!`
+    : 'Failed to connect to Mistral AI or Tavily Search. Please verify MISTRAL_API_KEY and TAVILY_API_KEY.';
+
+  return {
+    success: isSuccess,
+    mistralActive,
+    tavilyActive,
+    workingModels,
+    totalKeys: mistralKeys.length,
+    message,
+    sampleResponse,
+    tavilySnippet,
+  };
+}
+
+/**
+ * Backward compatibility alias for system health check
  */
 export async function testGeminiConnection(): Promise<{
   success: boolean;
@@ -493,59 +626,13 @@ export async function testGeminiConnection(): Promise<{
   totalModels: number;
   rotationModels: string[];
   message: string;
-  results?: Array<{ keyNumber: number; model: string; success: boolean; message: string; errorCode?: number | string }>;
 }> {
-  const keys = getAllGeminiApiKeys();
-  if (keys.length === 0) {
-    return {
-      success: false,
-      totalKeys: 0,
-      totalModels: GEMINI_ROTATION_MODELS.length,
-      rotationModels: GEMINI_ROTATION_MODELS,
-      message: 'No GOOGLE_API_KEY or GEMINI_API_KEY found in environment.',
-    };
-  }
-
-  const results = [];
-  let successfulTests = 0;
-
-  for (let i = 0; i < keys.length; i++) {
-    const k = keys[i];
-    // Test with default fast model for each key
-    const testModelName = GEMINI_ROTATION_MODELS[i % GEMINI_ROTATION_MODELS.length];
-    try {
-      const model = getGeminiModel(k, testModelName);
-      if (!model) throw new Error('Could not create model instance');
-
-      const res = await model.invoke([
-        new HumanMessage('Say "Gemini Key Online!" in 3 words.'),
-      ]);
-
-      results.push({
-        keyNumber: i + 1,
-        model: testModelName,
-        success: true,
-        message: String(res.content || '').trim() || 'Online',
-      });
-      successfulTests++;
-    } catch (e: unknown) {
-      const errInfo = parseApiError(e);
-      results.push({
-        keyNumber: i + 1,
-        model: testModelName,
-        success: false,
-        errorCode: errInfo.code,
-        message: `HTTP ${errInfo.code} (${errInfo.type}): ${errInfo.message.slice(0, 80)}`,
-      });
-    }
-  }
-
+  const mistralRes = await testMistralConnection();
   return {
-    success: successfulTests > 0,
-    totalKeys: keys.length,
-    totalModels: GEMINI_ROTATION_MODELS.length,
-    rotationModels: GEMINI_ROTATION_MODELS,
-    message: `${successfulTests} of ${keys.length} Google Gemini API keys active with ${GEMINI_ROTATION_MODELS.length} rotation models ready for randomized load balancing!`,
-    results,
+    success: mistralRes.success,
+    totalKeys: mistralRes.totalKeys,
+    totalModels: mistralRes.workingModels.length,
+    rotationModels: mistralRes.workingModels,
+    message: mistralRes.message,
   };
 }

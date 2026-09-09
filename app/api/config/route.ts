@@ -1,19 +1,24 @@
 import { NextResponse } from 'next/server';
 import { getAppSettings, testQStashConnection } from '@/lib/upstash';
 import { testSmtpConnection } from '@/lib/mailer';
-import { testGeminiConnection, getAllGeminiApiKeys } from '@/lib/ai-generator';
+import { testMistralConnection, getAllMistralApiKeys, getAllGeminiApiKeys, testGeminiConnection } from '@/lib/ai-generator';
 import { testMongooseConnection } from '@/lib/mongodb';
 
 export async function GET() {
   const settings = getAppSettings();
-  const keys = getAllGeminiApiKeys();
+  const mistralKeys = getAllMistralApiKeys();
+  const geminiKeys = getAllGeminiApiKeys();
+  const hasTavily = Boolean(process.env.TAVILY_API_KEY);
   const hasMongo = Boolean(process.env.MONGODB_URI);
 
   return NextResponse.json({
     success: true,
     config: {
-      hasGemini: keys.length > 0,
-      geminiKeysCount: keys.length,
+      hasMistral: mistralKeys.length > 0,
+      mistralKeysCount: mistralKeys.length,
+      hasTavily,
+      hasGemini: mistralKeys.length > 0 || geminiKeys.length > 0,
+      geminiKeysCount: mistralKeys.length || geminiKeys.length,
       hasMongo,
       hasQstash: Boolean(settings.qstashToken),
       hasRedis: Boolean(settings.upstashRedisUrl && settings.upstashRedisToken),
@@ -31,7 +36,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const { action } = (await req.json().catch(() => ({}))) as {
-      action?: 'smtp' | 'gemini' | 'mongo' | 'qstash';
+      action?: 'smtp' | 'gemini' | 'mistral' | 'ai' | 'mongo' | 'qstash';
     };
 
     if (action === 'mongo') {
@@ -44,9 +49,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, qstash: qstashStatus });
     }
 
-    if (action === 'gemini') {
-      const geminiStatus = await testGeminiConnection();
-      return NextResponse.json({ success: true, gemini: geminiStatus });
+    if (action === 'mistral' || action === 'ai' || action === 'gemini') {
+      const mistralStatus = await testMistralConnection();
+      return NextResponse.json({ success: true, mistral: mistralStatus, gemini: mistralStatus });
     }
 
     // Default test SMTP

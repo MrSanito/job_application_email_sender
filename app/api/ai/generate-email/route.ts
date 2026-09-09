@@ -31,6 +31,8 @@ export async function POST(req: NextRequest) {
       textBody: result.textBody,
       isAiGenerated: result.isAiGenerated,
       modelUsed: result.modelUsed,
+      companyContext: result.companyContext,
+      tavilyQuery: result.tavilyQuery,
       latencyMs: result.latencyMs,
     });
   } catch (error: unknown) {
