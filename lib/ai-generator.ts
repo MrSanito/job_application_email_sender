@@ -22,22 +22,94 @@ export interface CandidateProfile {
 }
 
 /**
- * Collect all configured Google/Gemini API keys from environment
+ * Parse and categorize Gemini / Google GenAI API errors (409 Conflict, 429 Rate Limit, 403 Quota, 503 Overload, etc.)
+ */
+export function parseApiError(err: unknown): {
+  code: number | string;
+  type: string;
+  message: string;
+  isRetryable: boolean;
+} {
+  const message = err instanceof Error ? err.message : String(err);
+  const msgLower = message.toLowerCase();
+
+  let code: number | string = 'UNKNOWN';
+  let type = 'General Error';
+  let isRetryable = true;
+
+  if (message.includes('429') || msgLower.includes('resource_exhausted') || msgLower.includes('quota exceeded') || msgLower.includes('rate limit') || msgLower.includes('too many requests')) {
+    code = 429;
+    type = 'Rate Limit / Quota Exhausted';
+    isRetryable = true;
+  } else if (message.includes('409') || msgLower.includes('conflict') || msgLower.includes('already exists') || msgLower.includes('aborted')) {
+    code = 409;
+    type = 'Conflict / State Error';
+    isRetryable = true;
+  } else if (message.includes('403') || msgLower.includes('permission_denied') || msgLower.includes('forbidden') || msgLower.includes('api key not valid') || msgLower.includes('invalid_api_key')) {
+    code = 403;
+    type = 'Forbidden / Invalid Key / Quota Block';
+    isRetryable = true;
+  } else if (message.includes('503') || msgLower.includes('unavailable') || msgLower.includes('high demand') || msgLower.includes('overloaded') || msgLower.includes('backend error')) {
+    code = 503;
+    type = 'Service Unavailable / Overloaded';
+    isRetryable = true;
+  } else if (message.includes('500') || msgLower.includes('internal error')) {
+    code = 500;
+    type = 'Internal Server Error';
+    isRetryable = true;
+  } else if (message.includes('404') || msgLower.includes('not found') || msgLower.includes('unsupported model')) {
+    code = 404;
+    type = 'Model Not Found';
+    isRetryable = true;
+  } else if (message.includes('400') || msgLower.includes('invalid_argument') || msgLower.includes('bad request')) {
+    code = 400;
+    type = 'Bad Request / Invalid Argument';
+    isRetryable = true;
+  }
+
+  return { code, type, message, isRetryable };
+}
+
+/**
+ * Collect all configured Google/Gemini API keys from environment (supports unlimited keys & lists)
  */
 export function getAllGeminiApiKeys(): string[] {
-  const candidates: (string | undefined)[] = [
-    process.env.GOOGLE_API_KEY,
-    process.env.GOOGLE_API_KEY2,
-    process.env.GOOGLE_API_KEY_2,
-    process.env['GOOGLE-API-KEY2'],
-    process.env['GOOGLE-API-KEY-2'],
-    process.env.GEMINI_API_KEY,
-    process.env.GEMINI_API_KEY2,
-    process.env.GEMINI_API_KEY_2,
-    process.env.NEXT_PUBLIC_GEMINI_API_KEY,
-  ];
+  const candidates: string[] = [];
 
-  // Dynamically scan any other matching env variables
+  // 1. Comma / newline separated lists
+  const commaLists = [
+    process.env.GOOGLE_API_KEYS,
+    process.env.GEMINI_API_KEYS,
+    process.env.GOOGLE_API_KEY_LIST,
+    process.env.GEMINI_API_KEY_LIST,
+  ];
+  for (const list of commaLists) {
+    if (list && typeof list === 'string') {
+      const parts = list.split(/[,;\n]/).map((k) => k.trim());
+      candidates.push(...parts);
+    }
+  }
+
+  // 2. Numbered keys (1 through 25)
+  for (let i = 1; i <= 25; i++) {
+    candidates.push(
+      process.env[`GOOGLE_API_KEY${i}`] || '',
+      process.env[`GOOGLE_API_KEY_${i}`] || '',
+      process.env[`GEMINI_API_KEY${i}`] || '',
+      process.env[`GEMINI_API_KEY_${i}`] || '',
+      process.env[`GOOGLE-API-KEY${i}`] || '',
+      process.env[`GOOGLE-API-KEY-${i}`] || ''
+    );
+  }
+
+  // 3. Base keys
+  candidates.push(
+    process.env.GOOGLE_API_KEY || '',
+    process.env.GEMINI_API_KEY || '',
+    process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
+  );
+
+  // 4. Dynamic scan for any matching environment variables
   for (const [k, v] of Object.entries(process.env)) {
     const upper = k.toUpperCase();
     if (
@@ -46,14 +118,17 @@ export function getAllGeminiApiKeys(): string[] {
         upper.startsWith('GOOGLE-API-KEY')) &&
       typeof v === 'string'
     ) {
-      candidates.push(v);
+      if (v.includes(',')) {
+        candidates.push(...v.split(',').map((s) => s.trim()));
+      } else {
+        candidates.push(v);
+      }
     }
   }
 
   const clean = candidates
-    .filter((k): k is string => Boolean(k && typeof k === 'string'))
-    .map((k) => k.trim().replace(/^["']|["']$/g, ''))
-    .filter((k) => k.length > 5);
+    .map((k) => (typeof k === 'string' ? k.trim().replace(/^["']|["']$/g, '') : ''))
+    .filter((k) => k.length > 10);
 
   return Array.from(new Set(clean));
 }
@@ -87,7 +162,6 @@ export function getRandomGeminiApiKey(customApiKey?: string): {
  */
 export const GEMINI_ROTATION_MODELS: string[] = [
   'gemini-2.5-flash',
-  'gemini-flash-latest',
   'gemini-3.5-flash-lite',
   'gemini-flash-lite-latest',
   'gemini-3.5-flash',
@@ -153,11 +227,11 @@ export async function generateOnTheSpotEmail(
     role: candidateProfile?.role || 'Full-Stack Developer',
     skills:
       candidateProfile?.skills ||
-      'Next.js, React, Node.js, Express, TypeScript, PostgreSQL, Prisma, Redis, BullMQ, MongoDB, Gemini API, Socket.io',
+      'Next.js, React, Node.js, TypeScript, PostgreSQL, MongoDB, Redis, BullMQ, AI Voice & Calling Agents (Pipecat, Gemini, Plivo, STT/TTS)',
     portfolioUrl: candidateProfile?.portfolioUrl || 'https://zynito.in',
     experienceSummary:
       candidateProfile?.experienceSummary ||
-      'Full-stack developer building production web apps, real-time WebSocket systems, async BullMQ/Redis pipelines, and open-source contributor to Corsair (10k+ stars).',
+      'Founding Developer at SoloBuild AI building full-stack web applications, async queue pipelines, and AI voice/calling agent systems (Pipecat, Gemini, Plivo, STT/TTS) end-to-end.',
   };
 
   if (!keySelection) {
@@ -187,7 +261,7 @@ export async function generateOnTheSpotEmail(
       ];
 
   const contactName = lead.name?.trim();
-  const companyName = lead.company?.trim() || lead.name?.trim() || 'the team';
+  const companyName = lead.company?.trim() || lead.name?.trim() || 'your company';
   const hasSpecificContactName =
     contactName &&
     contactName.toLowerCase() !== 'n/a' &&
@@ -197,42 +271,43 @@ export async function generateOnTheSpotEmail(
 
   const salutationRule = hasSpecificContactName
     ? `Greet the contact naturally by first name: "Hi ${contactName.split(' ')[0]},"`
-    : `No individual contact/HR name is provided. Greet the team naturally: "Hi ${companyName} team," or "Hi ${companyName} engineering team," (NEVER use "Hi ${companyName}," as if the company was a person's first name, and NEVER use "Hi Hiring Manager," or "Hi null,")`;
+    : `No individual contact/HR name is provided. Greet naturally: "Hi there," or "Hello," (STRICT RULE: Do NOT write "team", NEVER use "Hi ${companyName} team," or "Hi team," or "Dear team").`;
 
-  const systemPrompt = `You are writing a short, honest, personalized job outreach email — a candidate reaching out directly to a company expressing interest in joining their team (NOT a freelance/consulting pitch, NOT a sales email).
+  const systemPrompt = `You are writing a short, honest, personalized job outreach email — a candidate reaching out directly to a company expressing interest in open full-stack / backend developer roles (NOT a freelance/consulting pitch, NOT a sales email).
 
 Context:
 - Company: ${companyName}
-- Contact: ${hasSpecificContactName ? contactName : 'Team / Engineering'}
+- Contact: ${hasSpecificContactName ? contactName : 'Software Engineering'}
 - Website: ${lead.website || 'N/A'}
 - Industry/focus: ${lead.catName || 'Engineering'}
 
 Rules:
 1. Salutation: ${salutationRule}
-2. Open with ONE specific, genuine line about the company's product or tech — no generic flattery like "impressive team."
-3. Make clear this is about wanting to join their team, not offering freelance/contract services. Position the candidate honestly: skilled and hands-on, NOT "senior," "world-class," or "extensive experience." Ground it in real skills (${profile.skills}) and shipped projects.
-4. Give 2 concrete things the candidate could contribute as a team member — no buzzword soup.
+2. Open with ONE specific, genuine line about the company's product or tech — no generic flattery like "impressive work."
+3. Position the candidate honestly: a hands-on full-stack developer who founded SoloBuild AI, building full-stack web applications and AI voice/calling agent pipelines (${profile.skills}). Keep it short, simple, and grounded.
+4. Give 1-2 concrete ways the candidate could contribute (e.g. shipping full-stack features, building robust backend APIs/queues, or AI voice/calling agent integrations) — no buzzword soup.
 5. Tone: conversational, confident, humble. Never use: "I hope this email finds you well," "I am writing to express my interest," "extensive experience," "world-class," "if you ever need extra hands."
-6. Length: 90–130 words.
-7. Close by asking about open roles or a quick chat about fit on the team — not "hiring me as a contractor." Mention that resume is attached.
-8. Signature: Add ONLY the candidate's portfolio URL (${profile.portfolioUrl || 'https://zynito.in'}). Do NOT include GitHub or LinkedIn links in the email body (they are already included inside the attached resume).
-9. Output ONLY valid JSON: {"subject": "...", "htmlBody": "...", "textBody": "..."}. Subject under 8 words. No markdown fences.`;
+6. Avoid repeating or writing "team" in greetings (do NOT use "Hi team" or "Hi [Company] team").
+7. Length: 70–95 words (keep it short and simple).
+8. Close by asking about open engineering roles or a quick chat. Mention that resume is attached.
+9. Signature: Add ONLY the candidate's portfolio URL (${profile.portfolioUrl || 'https://zynito.in'}). Do NOT include any other URLs (no voice.solobuildai.com, no GitHub, no LinkedIn in the email body text — all links and full project details are in the attached resume).
+10. Output ONLY valid JSON: {"subject": "...", "htmlBody": "...", "textBody": "..."}. Subject under 8 words. No markdown fences.`;
 
-  const userPrompt = `Write a personalized job application email for:
+  const userPrompt = `Write a short and simple job application email for:
 Target Recipient & Company:
-- Recipient Name: ${hasSpecificContactName ? contactName : `[No HR Name - Address as ${companyName} team]`}
+- Recipient Name: ${hasSpecificContactName ? contactName : `[No HR Name - Greet as "Hi there," or "Hello,"]`}
 - Company: ${companyName}
 - Industry / Focus: ${lead.catName || 'Software Development'}
 - Website / Domain: ${lead.website || 'N/A'}
 - City / Location: ${lead.address || 'Remote'}
-- Candidate Notes: ${customInstructions || 'Genuine interest in joining their engineering team.'}
+- Candidate Notes: ${customInstructions || 'Genuine interest in joining as a full-stack developer.'}
 
-Candidate Profile:
+Candidate Profile (from Resume):
 - Name: ${profile.name}
 - Current Role: ${profile.role}
 - Core Skills: ${profile.skills}
-- Portfolio: ${profile.portfolioUrl || 'https://zynito.in'} (include ONLY this link in signature, omit GitHub/LinkedIn from email text)
-- Shipped Work: Built real-time multiplayer systems with Socket.io/BullMQ/Redis, full-stack Next.js/Node apps, and contributed 12.6k lines of TS to Corsair (10k+ stars).`;
+- Portfolio: ${profile.portfolioUrl || 'https://zynito.in'} (include ONLY this link in signature, do NOT add any other URLs in email text)
+- Background: Founding Developer at SoloBuild AI — built and shipped full-stack web applications, async Redis/BullMQ pipelines, and AI voice/calling agent systems (Pipecat, Gemini, Plivo, STT/TTS) end-to-end.`;
 
   // Rotate through key and model combinations
   for (let kIdx = 0; kIdx < keysToTry.length; kIdx++) {
@@ -261,18 +336,40 @@ Candidate Profile:
         const modelUsedLabel = `${currentModelName} (Key #${keyNumber || kIdx + 1} of ${allKeys.length})`;
         const keyUsedLabel = `Key #${keyNumber || kIdx + 1} of ${allKeys.length}`;
 
+        // URL Sanitization: Ensure NO voice.solobuildai.com, github, or linkedin URLs exist in the email body (only zynito.in)
+        const sanitizeUrlReferences = (str: string) => {
+          if (!str) return '';
+          return str
+            .replace(/https?:\/\/voice\.solobuildai\.com[^\s<>"']*/gi, '')
+            .replace(/voice\.solobuildai\.com/gi, '')
+            .replace(/https?:\/\/(?:www\.)?github\.com\/[^\s<>"']*/gi, '')
+            .replace(/https?:\/\/(?:www\.)?linkedin\.com\/[^\s<>"']*/gi, '');
+        };
+
+        const cleanedSubject = sanitizeUrlReferences(parsed.subject || `Quick question regarding ${lead.company || 'your team'} / ${profile.name}`);
+        const cleanedHtml = sanitizeUrlReferences(parsed.htmlBody || `<p>${parsed.textBody?.replace(/\n/g, '<br/>')}</p>`);
+        const cleanedText = sanitizeUrlReferences(parsed.textBody || parsed.htmlBody?.replace(/<[^>]*>?/gm, ''));
+
         return {
-          subject: parsed.subject || `Quick question regarding ${lead.company || 'your team'} / ${profile.name}`,
-          htmlBody: parsed.htmlBody || `<p>${parsed.textBody?.replace(/\n/g, '<br/>')}</p>`,
-          textBody: parsed.textBody || parsed.htmlBody?.replace(/<[^>]*>?/gm, ''),
+          subject: cleanedSubject,
+          htmlBody: cleanedHtml,
+          textBody: cleanedText,
           isAiGenerated: true,
           modelUsed: modelUsedLabel,
           keyUsed: keyUsedLabel,
           latencyMs: Date.now() - startTime,
         };
-      } catch (keyErr) {
-        console.warn(`[Model: ${currentModelName}, Key #${keyNumber || kIdx + 1}] failed, rotating:`, keyErr);
-        // Continue to next model/key combination
+      } catch (keyErr: unknown) {
+        const errInfo = parseApiError(keyErr);
+        console.warn(
+          `[API Error ${errInfo.code} - ${errInfo.type}] on Model "${currentModelName}" (Key #${keyNumber || kIdx + 1} of ${allKeys.length}). Auto-rotating to next route:`,
+          errInfo.message.slice(0, 120)
+        );
+
+        // For temporary throttling/conflict codes (429, 409, 503), apply jitter delay before next rotation
+        if ([429, 409, 503].includes(Number(errInfo.code))) {
+          await new Promise((resolve) => setTimeout(resolve, 200 + Math.random() * 200));
+        }
       }
     }
   }
@@ -300,7 +397,7 @@ export async function testGeminiConnection(): Promise<{
   totalModels: number;
   rotationModels: string[];
   message: string;
-  results?: Array<{ keyNumber: number; model: string; success: boolean; message: string }>;
+  results?: Array<{ keyNumber: number; model: string; success: boolean; message: string; errorCode?: number | string }>;
 }> {
   const keys = getAllGeminiApiKeys();
   if (keys.length === 0) {
@@ -336,11 +433,13 @@ export async function testGeminiConnection(): Promise<{
       });
       successfulTests++;
     } catch (e: unknown) {
+      const errInfo = parseApiError(e);
       results.push({
         keyNumber: i + 1,
         model: testModelName,
         success: false,
-        message: e instanceof Error ? e.message : 'API test failed',
+        errorCode: errInfo.code,
+        message: `HTTP ${errInfo.code} (${errInfo.type}): ${errInfo.message.slice(0, 80)}`,
       });
     }
   }

@@ -1,0 +1,49 @@
+=== PAGE 1 ===
+Vishal Nishad
+♂phone+91 63537 78872✉vishalni2004@gmail.com/linkedinlinkedin.com/in/vishal-nishad-03a690229/github
+github.com/MrSanito
+Education
+Chandigarh UniversityPunjab, India
+Master of Computer Applications (MCA) 2024 – 2026
+• Relevant Coursework:Data Structures, Operating Systems, Database Systems, Software Engineering
+Maharaja Sayajirao University of BarodaVadodara, India
+Bachelor of Commerce (B.Com) 2021 – 2024
+• Relevant Coursework:Business Management, Accounting, Economics, Statistics
+Experience
+SoloBuild AI Remote
+Founding Developer April 2026 – Present
+• Founded SoloBuild AI, building full-stack web apps and AI voice agent systems for clients end-to-end, including
+voice.solobuildai.com, a plug-and-play telephony platform enabling 1-day client onboarding.
+• Engineered production AI voice agents (LiveKit, Pipecat, Gemini Live API, Deepgram) and production-grade
+authentication (token rotation, DPoP) for client deployments.
+Open Source Contributions
+Corsair|Open Source Integration Platform for AI Agents (10k+ stars)Aug – Sep 2026
+• Shipped 3 merged plugins –Attio,DaData.ru,Instagram– covering 100+ API operations with OAuth/API-key auth,
+webhook signatures, and rate-limit retries.
+• Contributed ˜12,600 lines of TypeScript across 63 ﬁles; ﬁxed an HTTP client auth bug aﬀecting the plugin
+ecosystem.
+Projects
+Real-Time Quiz Platform|Next.js, Turborepo, Node.js, Express, PostgreSQL, Prisma, Redis, Socket.io, BullMQ, TypeScript
+• Engineered a real-time multiplayer quiz platform supporting concurrent live rooms with synchronized timers,
+questions, and leaderboards via Socket.IO.
+• Architected a Turborepo monorepo with separate HTTP/WebSocket services and shared database/Redis packages
+for independent scaling.
+• Built asynchronous score-persistence pipelines with BullMQ and Redis to maintain reliability under concurrent load,
+backed by PostgreSQL/Prisma.
+• Implemented a passwordless OTP authentication system with DPoP-bound, rotating refresh tokens across a strict
+TypeScript architecture.
+T echnical Skills
+Languages:TypeScript, JavaScript, SQL
+Frameworks & Libraries:Next.js, React.js, Express.js, Socket.io
+Databases & ORMs:PostgreSQL, MongoDB, Prisma, Redis
+AI Voice Infrastructure:LiveKit, Pipecat, Gemini Live API, Deepgram, Cartesia, Twilio, Plivo, Vobiz, RAG
+T ools & Platforms:Turborepo, BullMQ, Node.js, Docker, Kubernetes, Git, Postman
+Concepts:Real-time Systems, REST APIs, Authentication (JWT, DPoP, T oken Rotation), Monorepo Architecture,
+Event-driven Systems, Asynchronous Processing, RBAC
+Certiﬁcations
+0-1 Full Stack Web DevelopmentNov 2025 – May 2026
+100xDevs – Harkirat Singh
+• Learned the MERN stack in depth (TypeScript, Express, ORMs, monorepos/Turborepo) along with Docker, AWS
+deployment, and Nginx reverse proxies.
+• Built a Paytm/Wallet clone end-to-end and worked on a GSoC-style open-source project as part of the cohort.
+

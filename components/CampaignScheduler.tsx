@@ -35,7 +35,7 @@ export default function CampaignScheduler({
   bodyTemplate,
 }: CampaignSchedulerProps) {
   const router = useRouter();
-  const [campaignName, setCampaignName] = useState('Senior Full Stack Job Search Outreach');
+  const [campaignName, setCampaignName] = useState('Full-Stack Developer Outreach');
   const [emailsPerDay, setEmailsPerDay] = useState<number>(50);
   const [intervalSeconds, setIntervalSeconds] = useState<number>(60);
   const [intervalJitterSeconds, setIntervalJitterSeconds] = useState<number>(10);
@@ -73,7 +73,7 @@ export default function CampaignScheduler({
       candidateName: 'Vishal Nishad',
       candidateRole: 'Full-Stack Developer',
       candidatePortfolio: 'https://zynito.in',
-      candidateSkills: 'Next.js, React, Node.js, Express, TypeScript, PostgreSQL, Prisma, Redis, BullMQ, MongoDB, Gemini API, Socket.io',
+      candidateSkills: 'Next.js, React, Node.js, Express, TypeScript, PostgreSQL, Prisma, MongoDB, Redis, BullMQ, Socket.io, Gemini API',
       subjectTemplate,
       bodyTemplate,
       emailsPerDay,

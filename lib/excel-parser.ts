@@ -71,15 +71,16 @@ export function extractEmail(value: unknown, websiteUrl?: string, companyName?: 
 }
 
 export function parseExcelBuffer(buffer: ArrayBuffer | Uint8Array): ParseResult {
-  const workbook = XLSX.read(buffer, { type: 'array' });
-  
-  // Use first sheet or 'Jobs' sheet if available
-  const sheetName = workbook.SheetNames.includes('Jobs') 
-    ? 'Jobs' 
-    : workbook.SheetNames[0];
-  
-  const worksheet = workbook.Sheets[sheetName];
-  if (!worksheet) {
+  let workbook: XLSX.WorkBook;
+  try {
+    workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+  } catch (readErr) {
+    throw new Error(
+      `Unable to parse spreadsheet file: ${readErr instanceof Error ? readErr.message : 'Invalid or corrupted file format'}. Please ensure the file is a valid .xlsx, .xls, or .csv file.`
+    );
+  }
+
+  if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
     return {
       leads: [],
       stats: { totalRows: 0, validEmails: 0, invalidEmails: 0, duplicateEmails: 0, categoriesCount: 0 },
@@ -87,33 +88,60 @@ export function parseExcelBuffer(buffer: ArrayBuffer | Uint8Array): ParseResult 
     };
   }
 
-  const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: '' });
-  
-  const headers = rawRows.length > 0 ? Object.keys(rawRows[0]) : [];
-  
+  // Scan all sheets to find the sheet with the most valid data rows
+  let bestSheetName = workbook.SheetNames[0];
+  let bestRows: Record<string, unknown>[] = [];
+
+  for (const name of workbook.SheetNames) {
+    const ws = workbook.Sheets[name];
+    if (!ws) continue;
+    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
+    if (rows.length > bestRows.length) {
+      bestRows = rows;
+      bestSheetName = name;
+    }
+    // If explicit 'Jobs' or 'Leads' sheet exists and has data, prioritize it
+    if ((name.toLowerCase() === 'jobs' || name.toLowerCase() === 'leads') && rows.length > 0) {
+      bestRows = rows;
+      bestSheetName = name;
+      break;
+    }
+  }
+
+  if (bestRows.length === 0) {
+    return {
+      leads: [],
+      stats: { totalRows: 0, validEmails: 0, invalidEmails: 0, duplicateEmails: 0, categoriesCount: 0 },
+      headers: [],
+    };
+  }
+
+  const headers = Object.keys(bestRows[0]);
   const seenEmails = new Set<string>();
   const categories = new Set<string>();
   let validCount = 0;
   let invalidCount = 0;
   let duplicateCount = 0;
 
-  const leads: Lead[] = rawRows.map((row, index) => {
-    // Header lookup helper
-    const getVal = (...keys: string[]): string => {
-      for (const key of keys) {
-        const foundKey = Object.keys(row).find(
-          (k) => k.toLowerCase().trim() === key.toLowerCase().trim()
-        );
-        if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null) {
-          return String(row[foundKey]).trim();
+  const leads: Lead[] = bestRows.map((row, index) => {
+    // Normalization helper: strips spaces, underscores, dashes, dots, and lowercase
+    const normalizeKey = (k: string) => k.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    const getVal = (...targetKeys: string[]): string => {
+      const normalizedTargets = targetKeys.map(normalizeKey);
+      for (const [key, val] of Object.entries(row)) {
+        if (val === undefined || val === null) continue;
+        const normKey = normalizeKey(key);
+        if (normalizedTargets.includes(normKey)) {
+          return String(val).trim();
         }
       }
       return '';
     };
 
-    // Helper to clean company names (strip marketing pipes/dashes)
+    // Helper to clean company names
     const cleanCompanyName = (raw: string): string => {
-      if (!raw) return 'Tech Company';
+      if (!raw) return 'Innovations Inc';
       let clean = raw.trim();
       if (clean.includes('|')) {
         clean = clean.split('|')[0].trim();
@@ -124,44 +152,56 @@ export function parseExcelBuffer(buffer: ArrayBuffer | Uint8Array): ParseResult 
       return clean;
     };
 
-    // Priority check for real email columns
+    // Priority check for all possible email column header variations
     let rawEmail = getVal(
+      'email',
+      'email_id',
+      'email id',
+      'email_address',
+      'email address',
+      'emails',
+      'mail',
+      'mail_id',
+      'mail id',
       'hiring_professional_email',
       'hiring_email',
+      'hiring email',
       'hr_email',
+      'hr email',
       'recruiter_email',
+      'recruiter email',
       'contact_email',
-      'email_address'
+      'contact email',
+      'work_email',
+      'official_email',
+      'primary_email',
+      'to_email'
     );
-    let rawWebsite = getVal('website', 'url', 'site', 'web');
 
-    // If generic 'email' or 'mail' header is used
-    const genericEmailCol = getVal('email', 'mail', 'e-mail');
-    if (genericEmailCol) {
-      if (genericEmailCol.includes('@')) {
-        if (!rawEmail) rawEmail = genericEmailCol;
-      } else if (
-        genericEmailCol.startsWith('http://') ||
-        genericEmailCol.startsWith('https://') ||
-        genericEmailCol.includes('.com') ||
-        genericEmailCol.includes('.in') ||
-        genericEmailCol.includes('.io') ||
-        genericEmailCol.includes('.org')
-      ) {
-        if (!rawWebsite) rawWebsite = genericEmailCol;
+    let rawWebsite = getVal('website', 'web_site', 'url', 'web_url', 'site', 'domain', 'web', 'link', 'homepage');
+    const rawName = getVal('company', 'company_name', 'company name', 'business', 'business_name', 'org', 'organization', 'firm', 'employer', 'client');
+    const company = cleanCompanyName(rawName);
+    const contactName = getVal('contact', 'contact_name', 'contact name', 'name', 'full_name', 'full name', 'hr_name', 'hr name', 'recruiter', 'recruiter_name', 'lead_name', 'first_name', 'person');
+    const catName = getVal('cat_name', 'cat name', 'category', 'category_name', 'categoryname', 'job_title', 'job title', 'title', 'role', 'position', 'designation', 'domain', 'industry', 'field');
+    const address = getVal('address', 'location', 'city', 'state', 'country', 'headquarters', 'hq', 'place');
+    const phone = getVal('number', 'phone', 'telephone', 'phone_number', 'phone number', 'mobile', 'cell', 'contact_number');
+
+    // Fallback: If no explicit email column was matched, scan all cells in the row for an email pattern
+    if (!rawEmail) {
+      for (const val of Object.values(row)) {
+        if (typeof val === 'string' && val.includes('@') && val.includes('.')) {
+          const match = val.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+          if (match) {
+            rawEmail = match[0];
+            break;
+          }
+        }
       }
     }
 
-    const rawName = getVal('company', 'business', 'org', 'organization', 'name', 'company name');
-    const company = cleanCompanyName(rawName);
-    const contactName = getVal('contact', 'contact name', 'lead name', 'full name', 'hr name', 'recruiter');
-    const catName = getVal('cat name', 'category', 'categoryName', 'job title', 'role', 'industry', 'domain');
-    const address = getVal('address', 'location', 'city', 'state');
-    const phone = getVal('number', 'phone', 'telephone', 'mobile', 'cell');
-
-    let rawExtracted = extractEmail(rawEmail || genericEmailCol, rawWebsite, company);
+    const rawExtracted = extractEmail(rawEmail, rawWebsite, company);
     const emailList = rawExtracted
-      .split(',')
+      .split(/[,;\n/|]/)
       .map((e) => e.trim().toLowerCase())
       .filter((e) => EMAIL_REGEX.test(e));
 

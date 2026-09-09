@@ -130,7 +130,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               {geminiKeysCount > 0 ? (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800/40">
                   <Shuffle className="w-3 h-3 text-cyan-400" />
-                  {geminiKeysCount} Keys × 6 Models (Random Rotation)
+                  {geminiKeysCount} Keys × 5 Models (Random Rotation)
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-950 text-rose-400 border border-rose-800/40">
@@ -139,11 +139,11 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               )}
             </div>
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              Randomly balances on-the-spot email generation requests across configured API keys and verified Gemini models (<code className="text-cyan-300">gemini-2.5-flash</code>, <code className="text-cyan-300">gemini-3.5-flash-lite</code>, <code className="text-cyan-300">gemini-flash-latest</code>, etc.) with automatic failover.
+              Randomly balances on-the-spot email generation requests across configured API keys and verified Gemini models (<code className="text-cyan-300">gemini-2.5-flash</code>, <code className="text-cyan-300">gemini-3.5-flash-lite</code>, <code className="text-cyan-300">gemini-flash-lite-latest</code>, etc.) with automatic failover.
             </p>
 
             <div className="flex flex-wrap gap-1.5 pt-0.5">
-              {['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.5-flash', 'gemini-3.1-flash-lite'].map((m) => (
+              {['gemini-2.5-flash', 'gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.5-flash', 'gemini-3.1-flash-lite'].map((m) => (
                 <span key={m} className="px-2 py-0.5 rounded-md bg-indigo-950/60 border border-indigo-800/40 text-[10px] font-mono text-cyan-300">
                   {m}
                 </span>

@@ -4,40 +4,39 @@ export const DEFAULT_SUBJECT_TEMPLATE = 'Quick question regarding {{company}} / 
 
 export const DEFAULT_BODY_TEMPLATE = `Hi {{name}},
 
-I've been following {{company}}'s work in {{catName}} and really like the problems you're solving — figured I'd reach out directly instead of just dropping an application into a form.
+I've been following {{company}}'s work in {{catName}} and really like what you're building — wanted to reach out directly regarding open engineering and full-stack developer roles.
 
-I'm a full-stack developer with hands-on experience building production web apps and AI-driven systems — Next.js/Node backends, async queue pipelines, and automation workflows. I'd love the chance to bring that to your team.
+I'm a hands-on full-stack developer experienced in building and shipping products end-to-end (Next.js, TypeScript, Node.js, PostgreSQL/MongoDB, Redis queues, and AI voice/calling agents with Pipecat, Gemini, Plivo, STT/TTS).
 
-A couple of things I could contribute early on:
-• Shipping features end-to-end across the stack (Next.js, TypeScript, Node.js, PostgreSQL/Prisma)
-• Building reliable backend systems — APIs, async queues (Redis, BullMQ), and AI workflow integrations
+A couple of ways I can contribute right away:
+• Shipping clean full-stack features end-to-end across frontend and backend
+• Building robust APIs, async queues, or AI voice & calling agent integrations
 
-If you're open to it, I'd really appreciate a quick 10-15 min chat about any openings or how I might fit in. I've also attached my resume for reference.
+If you're hiring or open to connecting, I'd love a quick chat. My resume is attached for reference.
 
 Portfolio: https://zynito.in
 
-Thanks for considering,
+Best regards,
 Vishal Nishad
-Full-Stack Developer | +91 63537 78872`;
+Full-Stack Developer`;
 
 export function renderTemplate(template: string, lead: Partial<Lead>, extraParams: Record<string, string> = {}): string {
   if (!template) return '';
   
   let result = template;
   
-  const cleanCompany = lead.company?.trim() || 'your team';
+  const cleanCompany = lead.company?.trim() || 'your company';
   const cleanName = lead.name?.trim();
   const isGenericOrMissingName =
     !cleanName ||
     cleanName.toLowerCase() === 'n/a' ||
     cleanName.toLowerCase() === 'hiring manager' ||
     cleanName.toLowerCase() === 'recruiter' ||
+    cleanName.toLowerCase() === 'team' ||
     (lead.company && cleanName.toLowerCase() === lead.company.trim().toLowerCase());
 
   const salutationName = isGenericOrMissingName
-    ? lead.company
-      ? `${lead.company.trim()} team`
-      : 'there'
+    ? 'there'
     : cleanName;
 
   const replacements: Record<string, string> = {
