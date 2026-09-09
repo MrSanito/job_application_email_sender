@@ -117,12 +117,14 @@ export function parseApiError(err: unknown): {
  * Verified active Mistral AI models for rotation and load balancing
  */
 export const MISTRAL_ROTATION_MODELS: string[] = [
-  'open-mistral-7b',
-  'open-mistral-nemo',
-  'ministral-8b-latest',
-  'mistral-tiny',
-  'ministral-3b-latest',
-  'codestral-latest',
+  'mistral-small-latest',   // Priority 1: Fast and cost-effective model for general tasks
+  'mistral-medium-latest',  // Priority 2: Balanced capability model
+  'ministral-3b-latest',   // Priority 3: Ultra-fast compact 3B model
+  'open-mistral-7b',        // Priority 4: High-efficiency general instruction model
+  'ministral-8b-latest',   // Priority 5: Dense 8B instruction model
+  'mistral-tiny',          // Priority 6: Low-latency fast fallback
+  'open-mistral-nemo',     // Priority 7: 12B multilingual model
+  'codestral-latest',      // Priority 8: Structured code & logic model
 ];
 
 /**
@@ -418,12 +420,8 @@ Candidate Profile:
         } catch (mErr: unknown) {
           const errInfo = parseApiError(mErr);
           console.warn(
-            `[Mistral Error ${errInfo.code}] on model "${currentModelName}". Rotating to next model:`,
-            errInfo.message.slice(0, 100)
+            `[Mistral Error ${errInfo.code}] on model "${currentModelName}". Rotating immediately to next model in hierarchy.`
           );
-          if (errInfo.code === 429) {
-            await new Promise((resolve) => setTimeout(resolve, 150));
-          }
         }
       }
     }
