@@ -1,7 +1,12 @@
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { Lead } from '@/types';
-import { renderTemplate, DEFAULT_BODY_TEMPLATE, DEFAULT_SUBJECT_TEMPLATE } from './template-engine';
+import {
+  renderTemplate,
+  getRandomFallbackTemplate,
+  DEFAULT_BODY_TEMPLATE,
+  DEFAULT_SUBJECT_TEMPLATE,
+} from './template-engine';
 
 export interface DynamicEmailGenerationResult {
   subject: string;
@@ -189,7 +194,8 @@ export function getRandomGeminiModel(customModel?: string): {
 
 export function getGeminiModel(
   apiKey: string,
-  modelName: string = 'gemini-2.5-flash'
+  modelName: string = 'gemini-2.5-flash',
+  temperature: number = 0.82
 ): ChatGoogleGenerativeAI | null {
   if (!apiKey) return null;
 
@@ -197,7 +203,7 @@ export function getGeminiModel(
     return new ChatGoogleGenerativeAI({
       model: modelName,
       apiKey,
-      temperature: 0.7,
+      temperature,
       maxRetries: 2,
     });
   } catch (error) {
@@ -207,8 +213,69 @@ export function getGeminiModel(
 }
 
 /**
+ * 5 Anti-Spam Structural Archetypes that rotate per email to eliminate syntactic fingerprinting
+ */
+export interface AntiSpamStructureArchetype {
+  id: string;
+  name: string;
+  structuralPattern: string;
+  openingStyle: string;
+  bodyStyle: string;
+  ctaStyle: string;
+  subjectGuidance: string;
+}
+
+export const ANTI_SPAM_ARCHETYPES: AntiSpamStructureArchetype[] = [
+  {
+    id: 'product-builder',
+    name: 'Direct Product & Builder Angle',
+    structuralPattern: 'Short 2-3 paragraph structure: Direct observation of their tech/domain -> Full-stack & AI calling agent background at SoloBuild AI -> Concrete way to contribute -> Quick ask.',
+    openingStyle: 'Open directly with a genuine, specific observation about what the company builds or solves (zero generic flattery).',
+    bodyStyle: 'Highlight founding developer background at SoloBuild AI building full-stack applications (Next.js, Node, TypeScript, PostgreSQL/MongoDB) and AI voice/calling agent pipelines (Pipecat, Gemini, Plivo, STT/TTS).',
+    ctaStyle: 'Ask for a quick 5-minute chat if they are exploring full-stack additions. Mention attached resume.',
+    subjectGuidance: 'e.g. "[Company] + Vishal (Full-Stack Dev)" or "Full-Stack Developer / SoloBuild AI background" or "[Company] engineering / Vishal"',
+  },
+  {
+    id: 'ultra-concise',
+    name: 'Ultra-Concise 3-Sentence Note',
+    structuralPattern: 'Tight 3-sentence note (under 60 words total): Direct intro -> Core stack & SoloBuild AI founding background -> Attached resume & portfolio https://zynito.in.',
+    openingStyle: 'Cut straight to the point without introductory throat-clearing.',
+    bodyStyle: 'State role and expertise in 1 crisp sentence: hands-on full-stack developer (Next.js, TypeScript, Node.js, async queues, and AI voice calling agents).',
+    ctaStyle: 'Casual CTA: "Attached my resume with project highlights — let me know if you are open to connecting."',
+    subjectGuidance: 'e.g. "quick question re: [Company] tech" or "full-stack role at [Company]?" or "re: [Company] engineering"',
+  },
+  {
+    id: 'systems-architecture',
+    name: 'Full-Stack Architecture & High Velocity',
+    structuralPattern: 'Speed & ownership framing: An engineer who takes full-stack features and voice AI systems from 0 to deployed production with minimal handholding.',
+    openingStyle: 'Friendly, peer-to-peer technical greeting.',
+    bodyStyle: 'Focus on shipping end-to-end: clean frontend interfaces, resilient backend APIs, async Redis queues, and real-time voice agent workflows.',
+    ctaStyle: 'Ask if their engineering team has upcoming full-stack needs. Mention attached resume.',
+    subjectGuidance: 'e.g. "Vishal Nishad — Full-Stack Developer (Next.js / Node / Voice AI)" or "Exploring software roles at [Company]"',
+  },
+  {
+    id: 'inquisitive-sync',
+    name: 'Conversational Inquisitive Angle',
+    structuralPattern: 'Conversational curiosity: Reaching out to check on engineering team growth -> Quick snapshot of hands-on full-stack & AI calling agent experience -> Resume attached.',
+    openingStyle: 'Inquire naturally about their current engineering roadmap or open developer seats.',
+    bodyStyle: 'Explain background building SoloBuild AI and handling frontend, backend, and voice infrastructure end-to-end.',
+    ctaStyle: 'Low-pressure ask for a short introductory exchange if timing aligns.',
+    subjectGuidance: 'e.g. "Question regarding [Company] engineering" or "[Company] software roles / Vishal"',
+  },
+  {
+    id: 'execution-impact',
+    name: 'Execution & Practical Impact Angle',
+    structuralPattern: 'Bullet/highlight format or punchy 2-paragraph flow: Brief intro -> 2 concise bullet points highlighting full-stack delivery and AI voice agent pipelines -> Low-friction signoff.',
+    openingStyle: 'Natural, brief greeting referencing their engineering domain.',
+    bodyStyle: 'Use 2 crisp bullet points or 2 tight sentences showing immediate impact (shipping full-stack features, building robust backend pipelines/voice agents).',
+    ctaStyle: 'Mention attached resume and portfolio: https://zynito.in. Ask for a quick touchbase.',
+    subjectGuidance: 'e.g. "Full-stack developer interested in [Company]" or "Engineering at [Company] / Vishal Nishad"',
+  },
+];
+
+/**
  * Dynamically generate on-the-spot personalized cold email HTML and subject using LangChain + Google Gen AI
- * Uses randomized model and key selection across all configured keys & models with automatic failover!
+ * Uses randomized model, key, temperature, and structural anti-spam archetypes!
  */
 export async function generateOnTheSpotEmail(
   lead: Lead,
@@ -220,6 +287,12 @@ export async function generateOnTheSpotEmail(
   const startTime = Date.now();
   const keySelection = getRandomGeminiApiKey(apiKeyOverride);
   const modelSelection = getRandomGeminiModel(modelOverride);
+
+  // Pick a random anti-spam structural archetype per email
+  const archetype = ANTI_SPAM_ARCHETYPES[Math.floor(Math.random() * ANTI_SPAM_ARCHETYPES.length)];
+
+  // Randomized temperature between 0.78 and 0.92 for high natural variability
+  const dynamicTemperature = Number((0.78 + Math.random() * 0.14).toFixed(2));
 
   // Default candidate profile from verified resume
   const profile: CandidateProfile = {
@@ -235,9 +308,10 @@ export async function generateOnTheSpotEmail(
   };
 
   if (!keySelection) {
-    // Graceful fallback to dynamic template interpolation
-    const renderedSubject = renderTemplate(DEFAULT_SUBJECT_TEMPLATE, lead);
-    const renderedBody = renderTemplate(DEFAULT_BODY_TEMPLATE, lead);
+    // Graceful fallback to dynamic template interpolation with structural rotation
+    const fallbackTpl = getRandomFallbackTemplate();
+    const renderedSubject = renderTemplate(fallbackTpl.subject, lead);
+    const renderedBody = renderTemplate(fallbackTpl.body, lead);
 
     return {
       subject: renderedSubject,
@@ -269,31 +343,46 @@ export async function generateOnTheSpotEmail(
     contactName.toLowerCase() !== 'recruiter' &&
     (!lead.company || contactName.toLowerCase() !== lead.company.trim().toLowerCase());
 
+  // Salutation variation pool
+  const salutationsWithPerson = ['Hi', 'Hey', 'Hello'];
+  const randomSalutation = salutationsWithPerson[Math.floor(Math.random() * salutationsWithPerson.length)];
+  
   const salutationRule = hasSpecificContactName
-    ? `Greet the contact naturally by first name: "Hi ${contactName.split(' ')[0]},"`
-    : `No individual contact/HR name is provided. Greet naturally: "Hi there," or "Hello," (STRICT RULE: Do NOT write "team", NEVER use "Hi ${companyName} team," or "Hi team," or "Dear team").`;
+    ? `Greet the contact naturally by first name: "${randomSalutation} ${contactName.split(' ')[0]},"`
+    : `No individual contact/HR name is provided. Greet naturally as "Hi there," or "Hello," (STRICT RULE: Do NOT write "team", NEVER use "Hi ${companyName} team," or "Hi team," or "Dear team").`;
 
-  const systemPrompt = `You are writing a short, honest, personalized job outreach email — a candidate reaching out directly to a company expressing interest in open full-stack / backend developer roles (NOT a freelance/consulting pitch, NOT a sales email).
+  // Sign-off variation pool
+  const signoffs = ['Best,', 'Thanks,', 'Cheers,', 'Warm regards,', 'Best regards,', 'Talk soon,'];
+  const randomSignoff = signoffs[Math.floor(Math.random() * signoffs.length)];
+
+  const systemPrompt = `You are a cold email deliverability and outreach expert writing a short, authentic, personalized cold email from a candidate reaching out directly regarding open full-stack / backend developer roles.
+
+ANTI-SPAM & ANTI-FINGERPRINTING DIRECTIVES (CRITICAL):
+- Avoid formulaic spam patterns, boilerplate sentence openers, or robotic structural fingerprints.
+- DO NOT use generic spam phrases like: "I hope this email finds you well", "I came across your company", "I was impressed by", "I am writing to express my eager interest", "cutting-edge", "game-changer", "world-class", "if you need an extra pair of hands".
+- Adopt this specific structural angle for this email: [${archetype.name}]
+- Structural guidance: ${archetype.structuralPattern}
+- Opening guidance: ${archetype.openingStyle}
+- Body guidance: ${archetype.bodyStyle}
+- CTA guidance: ${archetype.ctaStyle}
+- Subject Line style: ${archetype.subjectGuidance}
 
 Context:
 - Company: ${companyName}
-- Contact: ${hasSpecificContactName ? contactName : 'Software Engineering'}
+- Contact: ${hasSpecificContactName ? contactName : 'Engineering Team'}
 - Website: ${lead.website || 'N/A'}
-- Industry/focus: ${lead.catName || 'Engineering'}
+- Industry/focus: ${lead.catName || 'Software Engineering'}
 
-Rules:
+Strict Content & Formatting Rules:
 1. Salutation: ${salutationRule}
-2. Open with ONE specific, genuine line about the company's product or tech — no generic flattery like "impressive work."
-3. Position the candidate honestly: a hands-on full-stack developer who founded SoloBuild AI, building full-stack web applications and AI voice/calling agent pipelines (${profile.skills}). Keep it short, simple, and grounded.
-4. Give 1-2 concrete ways the candidate could contribute (e.g. shipping full-stack features, building robust backend APIs/queues, or AI voice/calling agent integrations) — no buzzword soup.
-5. Tone: conversational, confident, humble. Never use: "I hope this email finds you well," "I am writing to express my interest," "extensive experience," "world-class," "if you ever need extra hands."
-6. Avoid repeating or writing "team" in greetings (do NOT use "Hi team" or "Hi [Company] team").
-7. Length: 70–95 words (keep it short and simple).
-8. Close by asking about open engineering roles or a quick chat. Mention that resume is attached.
-9. Signature: Add ONLY the candidate's portfolio URL (${profile.portfolioUrl || 'https://zynito.in'}). Do NOT include any other URLs (no voice.solobuildai.com, no GitHub, no LinkedIn in the email body text — all links and full project details are in the attached resume).
-10. Output ONLY valid JSON: {"subject": "...", "htmlBody": "...", "textBody": "..."}. Subject under 8 words. No markdown fences.`;
+2. Position candidate honestly: Founding Developer at SoloBuild AI, hands-on full-stack developer (${profile.skills}).
+3. Length: 55–90 words (crisp, human, easy to read on mobile).
+4. Sign-off: End with "${randomSignoff}\\n${profile.name}\\nFull-Stack Developer\\nPortfolio: ${profile.portfolioUrl || 'https://zynito.in'}"
+5. URLs: Include ONLY ${profile.portfolioUrl || 'https://zynito.in'} in the signature. Do NOT include any other URLs (no voice.solobuildai.com, no GitHub, no LinkedIn in the email body text — all links and full project details are in the attached resume).
+6. Mention that resume is attached.
+7. Output ONLY valid JSON: {"subject": "...", "htmlBody": "...", "textBody": "..."}. Subject under 8 words. No markdown fences.`;
 
-  const userPrompt = `Write a short and simple job application email for:
+  const userPrompt = `Write a fresh, authentic job application email tailored for:
 Target Recipient & Company:
 - Recipient Name: ${hasSpecificContactName ? contactName : `[No HR Name - Greet as "Hi there," or "Hello,"]`}
 - Company: ${companyName}
@@ -316,7 +405,7 @@ Candidate Profile (from Resume):
 
     for (let mIdx = 0; mIdx < modelsToTry.length; mIdx++) {
       const currentModelName = modelsToTry[mIdx];
-      const model = getGeminiModel(currentKey, currentModelName);
+      const model = getGeminiModel(currentKey, currentModelName, dynamicTemperature);
       if (!model) continue;
 
       try {
@@ -333,7 +422,7 @@ Candidate Profile (from Resume):
 
         const parsed = JSON.parse(rawText);
 
-        const modelUsedLabel = `${currentModelName} (Key #${keyNumber || kIdx + 1} of ${allKeys.length})`;
+        const modelUsedLabel = `${currentModelName} (Key #${keyNumber || kIdx + 1} of ${allKeys.length}) [${archetype.name}]`;
         const keyUsedLabel = `Key #${keyNumber || kIdx + 1} of ${allKeys.length}`;
 
         // URL Sanitization: Ensure NO voice.solobuildai.com, github, or linkedin URLs exist in the email body (only zynito.in)
@@ -374,10 +463,11 @@ Candidate Profile (from Resume):
     }
   }
 
-  // Graceful fallback if all combinations fail
+  // Graceful fallback if all combinations fail (uses anti-spam rotating fallback templates)
   const latencyMs = Date.now() - startTime;
-  const renderedSubject = renderTemplate(DEFAULT_SUBJECT_TEMPLATE, lead);
-  const renderedBody = renderTemplate(DEFAULT_BODY_TEMPLATE, lead);
+  const fallbackTpl = getRandomFallbackTemplate();
+  const renderedSubject = renderTemplate(fallbackTpl.subject, lead);
+  const renderedBody = renderTemplate(fallbackTpl.body, lead);
 
   return {
     subject: renderedSubject,

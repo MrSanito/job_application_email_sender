@@ -2,23 +2,63 @@ import { Lead } from '@/types';
 
 export const DEFAULT_SUBJECT_TEMPLATE = 'Quick question regarding {{company}} / Vishal';
 
-export const DEFAULT_BODY_TEMPLATE = `Hi {{name}},
+export const FALLBACK_TEMPLATES = [
+  {
+    subject: 'Full-Stack Developer / SoloBuild AI background — {{company}}',
+    body: `Hi {{name}},
 
-I've been following {{company}}'s work in {{catName}} and really like what you're building — wanted to reach out directly regarding open engineering and full-stack developer roles.
+I've been following {{company}}'s work in {{catName}} and wanted to reach out directly regarding open engineering / full-stack developer roles.
 
-I'm a hands-on full-stack developer experienced in building and shipping products end-to-end (Next.js, TypeScript, Node.js, PostgreSQL/MongoDB, Redis queues, and AI voice/calling agents with Pipecat, Gemini, Plivo, STT/TTS).
+I'm a hands-on full-stack developer (Founding Dev at SoloBuild AI) experienced in building end-to-end web apps and AI voice/calling agent pipelines (Next.js, TypeScript, Node.js, PostgreSQL/MongoDB, Redis queues, Pipecat, Gemini, Plivo, STT/TTS).
 
-A couple of ways I can contribute right away:
-• Shipping clean full-stack features end-to-end across frontend and backend
-• Building robust APIs, async queues, or AI voice & calling agent integrations
-
-If you're hiring or open to connecting, I'd love a quick chat. My resume is attached for reference.
+Attached my resume for quick reference. If you're open to a brief conversation, I'd love to connect.
 
 Portfolio: https://zynito.in
 
 Best regards,
 Vishal Nishad
-Full-Stack Developer`;
+Full-Stack Developer`,
+  },
+  {
+    subject: '{{company}} + Vishal (Full-Stack Developer)',
+    body: `Hey {{name}},
+
+Wanted to send a quick note regarding potential engineering roles at {{company}}.
+
+I'm a full-stack developer with experience shipping complete web products, async backend pipelines, and real-time AI voice calling agents at SoloBuild AI (Next.js, Node.js, TypeScript, PostgreSQL, Redis, Pipecat, Gemini, Plivo).
+
+My resume is attached with project details. Would love to chat if you're looking for an engineer who moves fast.
+
+Portfolio: https://zynito.in
+
+Thanks,
+Vishal Nishad
+Full-Stack Developer`,
+  },
+  {
+    subject: 'Exploring full-stack opportunities at {{company}}',
+    body: `Hello {{name}},
+
+Reaching out to see if {{company}} is currently exploring new full-stack or backend additions to the engineering team.
+
+As a founding developer at SoloBuild AI, I've built full-stack web applications, resilient backend queue architectures, and AI voice agent workflows end-to-end. 
+
+Attached my resume for details. If the timing works, I'd be glad to jump on a short sync.
+
+Portfolio: https://zynito.in
+
+Best,
+Vishal Nishad
+Full-Stack Developer`,
+  },
+];
+
+export const DEFAULT_BODY_TEMPLATE = FALLBACK_TEMPLATES[0].body;
+
+export function getRandomFallbackTemplate(): { subject: string; body: string } {
+  const index = Math.floor(Math.random() * FALLBACK_TEMPLATES.length);
+  return FALLBACK_TEMPLATES[index];
+}
 
 export function renderTemplate(template: string, lead: Partial<Lead>, extraParams: Record<string, string> = {}): string {
   if (!template) return '';
