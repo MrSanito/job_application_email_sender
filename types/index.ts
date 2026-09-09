@@ -31,6 +31,7 @@ export interface CampaignConfig {
   batchTimings: BatchTiming[];
   workDaysOnly: boolean; // Mon-Fri only
   startDate?: string;
+  startTime?: string;
   customInstructions?: string;
   candidateName?: string;
   candidateRole?: string;

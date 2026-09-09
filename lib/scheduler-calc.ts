@@ -41,10 +41,25 @@ export function calculateCampaignPlan(
   const schedulePreview: DaySchedulePreview[] = [];
   let remainingLeads = validLeadsCount;
   let currentLeadIndex = 0;
-  let currentDate = config.startDate ? new Date(config.startDate) : new Date();
   
-  // Set to starting hour or next morning if late
-  if (currentDate.getHours() >= 18) {
+  // Parse starting Date & Time accurately
+  let currentDate = new Date();
+  if (config.startDate) {
+    // If YYYY-MM-DD format
+    if (/^\d{4}-\d{2}-\d{2}$/.test(config.startDate)) {
+      const [y, m, d] = config.startDate.split('-').map(Number);
+      currentDate = new Date(y, m - 1, d);
+    } else {
+      const parsed = new Date(config.startDate);
+      if (!isNaN(parsed.getTime())) currentDate = parsed;
+    }
+  }
+
+  if (config.startTime && /^\d{1,2}:\d{2}$/.test(config.startTime)) {
+    const [startH, startM] = config.startTime.split(':').map(Number);
+    currentDate.setHours(startH, startM, 0, 0);
+  } else if (!config.startDate && currentDate.getHours() >= 18) {
+    // If running late today without custom date, advance to tomorrow 09:00 AM
     currentDate.setDate(currentDate.getDate() + 1);
     currentDate.setHours(9, 0, 0, 0);
   }
@@ -69,25 +84,52 @@ export function calculateCampaignPlan(
     const dayBatches = [];
 
     let dayLeadsAssigned = 0;
+    // Calculate base start hour for this day
+    let baseStartHour = 9;
+    let baseStartMinute = 0;
+    if (scheduledDaysCount === 1 && config.startTime && /^\d{1,2}:\d{2}$/.test(config.startTime)) {
+      const [sh, sm] = config.startTime.split(':').map(Number);
+      baseStartHour = isNaN(sh) ? 9 : sh;
+      baseStartMinute = isNaN(sm) ? 0 : sm;
+    }
+
+    // Determine interval spacing between batches (in minutes)
+    // Default window spans up to ~19:00 (7 PM) or minimum 60 mins between batches
+    const availableMinutes = Math.max(batchesPerDay * 60, (19 - baseStartHour) * 60 - baseStartMinute);
+    const batchIntervalMinutes = Math.max(45, Math.floor(availableMinutes / batchesPerDay));
+
     for (let b = 0; b < batchesPerDay && dayLeadsAssigned < dailyQuota; b++) {
       const batchQuota = Math.min(emailsPerBatch, dailyQuota - dayLeadsAssigned);
       if (batchQuota <= 0) break;
 
-      const timing = config.batchTimings?.[b] || {
-        batchNumber: b + 1,
-        startTime: `${String(9 + b * 4).padStart(2, '0')}:00`,
-        endTime: `${String(12 + b * 4).padStart(2, '0')}:00`,
-      };
+      let startTimeStr = `${String(9 + b * 4).padStart(2, '0')}:00`;
+      let endTimeStr = `${String(12 + b * 4).padStart(2, '0')}:00`;
+
+      if (config.batchTimings?.[b]) {
+        startTimeStr = config.batchTimings[b].startTime;
+        endTimeStr = config.batchTimings[b].endTime;
+      } else {
+        const batchStartTotalMinutes = baseStartHour * 60 + baseStartMinute + (b * batchIntervalMinutes);
+        const bStartH = Math.floor(batchStartTotalMinutes / 60) % 24;
+        const bStartM = batchStartTotalMinutes % 60;
+        
+        const batchEndTotalMinutes = batchStartTotalMinutes + Math.min(60, batchIntervalMinutes);
+        const bEndH = Math.floor(batchEndTotalMinutes / 60) % 24;
+        const bEndM = batchEndTotalMinutes % 60;
+
+        startTimeStr = `${String(bStartH).padStart(2, '0')}:${String(bStartM).padStart(2, '0')}`;
+        endTimeStr = `${String(bEndH).padStart(2, '0')}:${String(bEndM).padStart(2, '0')}`;
+      }
 
       const startIdx = currentLeadIndex + 1;
       const endIdx = currentLeadIndex + batchQuota;
 
       dayBatches.push({
         batchNumber: b + 1,
-        timeWindow: `${timing.startTime} - ${timing.endTime}`,
+        timeWindow: `${startTimeStr} - ${endTimeStr}`,
         emailCount: batchQuota,
         leadRange: `#${startIdx} - #${endIdx}`,
-        estimatedStartTime: `${loopDate.toISOString().split('T')[0]} ${timing.startTime}`,
+        estimatedStartTime: `${loopDate.toISOString().split('T')[0]} ${startTimeStr}`,
       });
 
       currentLeadIndex += batchQuota;

@@ -194,7 +194,18 @@ export async function initializeCampaign(
     day.batches.forEach((batch) => {
       const [startHour, startMin] = batch.timeWindow.split(' - ')[0].split(':').map(Number);
       
-      const batchDate = new Date();
+      let baseStartDate = new Date();
+      if (config.startDate) {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(config.startDate)) {
+          const [y, m, d] = config.startDate.split('-').map(Number);
+          baseStartDate = new Date(y, m - 1, d);
+        } else {
+          const parsed = new Date(config.startDate);
+          if (!isNaN(parsed.getTime())) baseStartDate = parsed;
+        }
+      }
+
+      const batchDate = new Date(baseStartDate);
       batchDate.setDate(batchDate.getDate() + (day.dayNumber - 1));
       batchDate.setHours(startHour || 9, startMin || 0, 0, 0);
 

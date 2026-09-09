@@ -45,6 +45,49 @@ export default function CampaignScheduler({
   const [isLaunching, setIsLaunching] = useState<boolean>(false);
   const [launchError, setLaunchError] = useState<string | null>(null);
 
+  // Helper date/time getters
+  const getTodayStr = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const getNowTimeStr = () => {
+    const d = new Date();
+    const h = String(d.getHours()).padStart(2, '0');
+    const m = String(d.getMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
+  };
+
+  const [startDate, setStartDate] = useState<string>(getTodayStr());
+  const [startTime, setStartTime] = useState<string>('09:00');
+
+  const setStartPreset = (preset: 'now' | 'tomorrow' | 'monday') => {
+    const d = new Date();
+    if (preset === 'now') {
+      setStartDate(getTodayStr());
+      setStartTime(getNowTimeStr());
+    } else if (preset === 'tomorrow') {
+      d.setDate(d.getDate() + 1);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      setStartDate(`${year}-${month}-${day}`);
+      setStartTime('09:00');
+    } else if (preset === 'monday') {
+      const dayOfWeek = d.getDay();
+      const daysUntilNextMonday = ((1 + 7 - dayOfWeek) % 7) || 7;
+      d.setDate(d.getDate() + daysUntilNextMonday);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      setStartDate(`${year}-${month}-${day}`);
+      setStartTime('09:00');
+    }
+  };
+
   // Dynamic batch timings
   const [batchTimings, setBatchTimings] = useState([
     { batchNumber: 1, startTime: '09:00', endTime: '12:00' },
@@ -73,7 +116,7 @@ export default function CampaignScheduler({
       candidateName: 'Vishal Nishad',
       candidateRole: 'Full-Stack Developer',
       candidatePortfolio: 'https://zynito.in',
-      candidateSkills: 'Next.js, React, Node.js, Express, TypeScript, PostgreSQL, Prisma, MongoDB, Redis, BullMQ, Socket.io, Gemini API',
+      candidateSkills: 'Next.js, React, Node.js, TypeScript, PostgreSQL, MongoDB, Redis, BullMQ, AI Voice & Calling Agents (Pipecat, Gemini, Plivo, STT/TTS)',
       subjectTemplate,
       bodyTemplate,
       emailsPerDay,
@@ -82,6 +125,8 @@ export default function CampaignScheduler({
       batchesPerDay,
       batchTimings: activeTimings,
       workDaysOnly,
+      startDate,
+      startTime,
     };
   }, [
     campaignName,
@@ -93,6 +138,8 @@ export default function CampaignScheduler({
     batchesPerDay,
     activeTimings,
     workDaysOnly,
+    startDate,
+    startTime,
   ]);
 
   // Real-time calculation engine
@@ -169,9 +216,69 @@ export default function CampaignScheduler({
       </div>
 
       {/* Inputs Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         
-        {/* 1. Emails Per Day */}
+        {/* 1. Start Date & Time */}
+        <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+              Start Date & Time
+            </label>
+            <span className="px-2 py-0.5 rounded-md bg-emerald-950/80 text-emerald-300 font-mono text-[11px] font-bold border border-emerald-700/40">
+              {startDate} @ {startTime}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] text-slate-400 block mb-1">Date</label>
+              <input
+                type="date"
+                value={startDate}
+                min={getTodayStr()}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 focus:border-emerald-500 text-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-slate-400 block mb-1">Time</label>
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 focus:border-emerald-500 text-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Quick Start Presets */}
+          <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-800/60">
+            <button
+              type="button"
+              onClick={() => setStartPreset('now')}
+              className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-slate-900 hover:bg-emerald-950 hover:text-emerald-300 text-slate-300 border border-slate-800 hover:border-emerald-800 transition-colors flex-1 text-center"
+            >
+              ⚡ Now
+            </button>
+            <button
+              type="button"
+              onClick={() => setStartPreset('tomorrow')}
+              className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-slate-900 hover:bg-emerald-950 hover:text-emerald-300 text-slate-300 border border-slate-800 hover:border-emerald-800 transition-colors flex-1 text-center"
+            >
+              🌅 Tmrw 9am
+            </button>
+            <button
+              type="button"
+              onClick={() => setStartPreset('monday')}
+              className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-slate-900 hover:bg-emerald-950 hover:text-emerald-300 text-slate-300 border border-slate-800 hover:border-emerald-800 transition-colors flex-1 text-center"
+            >
+              📅 Mon 9am
+            </button>
+          </div>
+        </div>
+
+        {/* 2. Emails Per Day */}
         <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
@@ -179,7 +286,7 @@ export default function CampaignScheduler({
               Emails Per Day
             </label>
             <span className="px-2 py-0.5 rounded-md bg-indigo-950/80 text-indigo-300 font-mono text-xs font-bold border border-indigo-700/40">
-              {emailsPerDay} mails / day
+              {emailsPerDay} / day
             </span>
           </div>
 
@@ -193,13 +300,13 @@ export default function CampaignScheduler({
             className="w-full accent-indigo-500 cursor-pointer"
           />
 
-          <div className="flex items-center justify-between gap-1.5 pt-1">
+          <div className="flex items-center justify-between gap-1 pt-1">
             {[25, 50, 100, 150, 200].map((preset) => (
               <button
                 key={preset}
                 type="button"
                 onClick={() => setEmailsPerDay(preset)}
-                className={`px-2 py-1 rounded-lg text-[11px] font-mono transition-colors ${
+                className={`px-1.5 py-1 rounded-lg text-[10px] font-mono transition-colors flex-1 text-center ${
                   emailsPerDay === preset
                     ? 'bg-indigo-600 text-white font-bold'
                     : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
@@ -211,12 +318,12 @@ export default function CampaignScheduler({
           </div>
         </div>
 
-        {/* 2. Per-Mail Interval Delay */}
+        {/* 3. Per-Mail Interval Delay */}
         <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-cyan-400" />
-              Interval Per Email
+              Interval Delay
             </label>
             <span className="px-2 py-0.5 rounded-md bg-cyan-950/80 text-cyan-300 font-mono text-xs font-bold border border-cyan-700/40">
               {intervalSeconds}s delay
@@ -233,13 +340,13 @@ export default function CampaignScheduler({
             className="w-full accent-cyan-500 cursor-pointer"
           />
 
-          <div className="flex items-center justify-between gap-1.5 pt-1">
+          <div className="flex items-center justify-between gap-1 pt-1">
             {[30, 45, 60, 90, 120].map((sec) => (
               <button
                 key={sec}
                 type="button"
                 onClick={() => setIntervalSeconds(sec)}
-                className={`px-2 py-1 rounded-lg text-[11px] font-mono transition-colors ${
+                className={`px-1.5 py-1 rounded-lg text-[10px] font-mono transition-colors flex-1 text-center ${
                   intervalSeconds === sec
                     ? 'bg-cyan-600 text-white font-bold'
                     : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
@@ -251,39 +358,39 @@ export default function CampaignScheduler({
           </div>
 
           {/* Random Jitter checkbox */}
-          <div className="flex items-center gap-2 pt-1 border-t border-slate-800/60">
+          <div className="flex items-center gap-1.5 pt-1 border-t border-slate-800/60">
             <input
               type="checkbox"
               id="jitter"
               checked={intervalJitterSeconds > 0}
               onChange={(e) => setIntervalJitterSeconds(e.target.checked ? 10 : 0)}
-              className="accent-indigo-500 rounded"
+              className="accent-indigo-500 rounded w-3 h-3"
             />
-            <label htmlFor="jitter" className="text-[11px] text-slate-400 cursor-pointer">
-              Add ±10s randomized jitter (human-like pattern)
+            <label htmlFor="jitter" className="text-[10px] text-slate-400 cursor-pointer">
+              ±10s human-like jitter
             </label>
           </div>
         </div>
 
-        {/* 3. Batches Per Day */}
+        {/* 4. Batches Per Day */}
         <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
               <Layers className="w-3.5 h-3.5 text-amber-400" />
-              Batches Per Day
+              Batches / Day
             </label>
             <span className="px-2 py-0.5 rounded-md bg-amber-950/80 text-amber-300 font-mono text-xs font-bold border border-amber-700/40">
-              {batchesPerDay} batches / day
+              {batchesPerDay} batches
             </span>
           </div>
 
-          <div className="grid grid-cols-4 gap-2 pt-1">
+          <div className="grid grid-cols-4 gap-1.5 pt-1">
             {[1, 2, 3, 4].map((b) => (
               <button
                 key={b}
                 type="button"
                 onClick={() => setBatchesPerDay(b)}
-                className={`py-2 rounded-xl text-xs font-semibold transition-all duration-200 ${
+                className={`py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
                   batchesPerDay === b
                     ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20 scale-[1.02]'
                     : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
@@ -295,17 +402,17 @@ export default function CampaignScheduler({
           </div>
 
           {/* Workdays Only toggle */}
-          <div className="flex items-center justify-between pt-2 border-t border-slate-800/60">
-            <span className="text-[11px] text-slate-400">Weekdays Only (Mon-Fri)</span>
+          <div className="flex items-center justify-between pt-1 border-t border-slate-800/60">
+            <span className="text-[10px] text-slate-400">Weekdays Only (Mon-Fri)</span>
             <button
               type="button"
               onClick={() => setWorkDaysOnly(!workDaysOnly)}
-              className={`w-9 h-5 rounded-full transition-colors relative p-0.5 ${
+              className={`w-8 h-4 rounded-full transition-colors relative p-0.5 ${
                 workDaysOnly ? 'bg-indigo-600' : 'bg-slate-800'
               }`}
             >
               <div
-                className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                className={`w-3 h-3 rounded-full bg-white transition-transform ${
                   workDaysOnly ? 'translate-x-4' : 'translate-x-0'
                 }`}
               />
@@ -384,25 +491,39 @@ export default function CampaignScheduler({
         {/* 4 Core Calculation Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           
-          {/* 1. Total Days */}
+          {/* 1. Scheduled Start */}
           <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800/80 shadow-md">
             <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-              <span>Total Days to Run</span>
-              <Calendar className="w-4 h-4 text-indigo-400" />
+              <span>Scheduled Start</span>
+              <Calendar className="w-4 h-4 text-emerald-400" />
+            </div>
+            <div className="text-xl font-extrabold text-emerald-300 tracking-tight">
+              {startDate}
+            </div>
+            <div className="text-[11px] text-slate-400 font-mono mt-1">
+              at {startTime} ({calculation.schedulePreview[0]?.dayOfWeek || 'Today'})
+            </div>
+          </div>
+
+          {/* 2. Total Days */}
+          <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800/80 shadow-md">
+            <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+              <span>Total Runtime</span>
+              <Clock className="w-4 h-4 text-indigo-400" />
             </div>
             <div className="text-3xl font-extrabold text-white tracking-tight">
               {calculation.totalDaysToRun}{' '}
               <span className="text-sm font-normal text-slate-400">Days</span>
             </div>
             <div className="text-[11px] text-indigo-400 font-medium mt-1">
-              Ends ~{calculation.estimatedEndDate}
+              Completes ~{calculation.estimatedEndDate}
             </div>
           </div>
 
-          {/* 2. Emails Per Batch */}
+          {/* 3. Emails Per Batch */}
           <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800/80 shadow-md">
             <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-              <span>Emails Per Batch</span>
+              <span>Batch Distribution</span>
               <Layers className="w-4 h-4 text-cyan-400" />
             </div>
             <div className="text-3xl font-extrabold text-cyan-300 tracking-tight">
@@ -411,21 +532,6 @@ export default function CampaignScheduler({
             </div>
             <div className="text-[11px] text-slate-400 mt-1">
               {calculation.totalBatches} total scheduled batches
-            </div>
-          </div>
-
-          {/* 3. Daily Sending Duration */}
-          <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800/80 shadow-md">
-            <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-              <span>Active Sending Time</span>
-              <Timer className="w-4 h-4 text-amber-400" />
-            </div>
-            <div className="text-3xl font-extrabold text-amber-300 tracking-tight">
-              {calculation.dailyActiveSendingMinutes}{' '}
-              <span className="text-sm font-normal text-slate-400">mins / day</span>
-            </div>
-            <div className="text-[11px] text-slate-400 mt-1">
-              Spread with {intervalSeconds}s pause
             </div>
           </div>
 
