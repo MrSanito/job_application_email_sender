@@ -54,7 +54,8 @@ export async function scheduleQStashJob(
   job: QueueJob,
   destinationUrl: string,
   delaySeconds: number = 0,
-  customToken?: string
+  customToken?: string,
+  queueName: string = 'email_job_queue'
 ): Promise<{ success: boolean; messageId?: string; isSimulated?: boolean; error?: string }> {
   const qstash = getQStashClient(customToken);
 
@@ -73,6 +74,7 @@ export async function scheduleQStashJob(
   try {
     const res = await qstash.publishJSON({
       url: targetPublishUrl,
+      queueName, // Route via named Upstash queue: 'email_job_queue'
       body: {
         jobId: job.id,
         campaignId: job.campaignId,
@@ -90,7 +92,7 @@ export async function scheduleQStashJob(
       },
     });
 
-    // In local development, also trigger delayed local worker dispatch so real email delivers after delay
+    // In local development, also trigger delayed local worker dispatch so real email delivers after true delay
     if (isLocalhost) {
       setTimeout(async () => {
         try {

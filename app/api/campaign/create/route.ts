@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeCampaign } from '@/lib/campaign-store';
+import { initializeCampaign, saveCampaignState } from '@/lib/campaign-store';
 import { calculateCampaignPlan } from '@/lib/scheduler-calc';
 import { scheduleQStashJob, getAppSettings } from '@/lib/upstash';
 import { CampaignConfig, Lead } from '@/types';
@@ -27,16 +27,31 @@ export async function POST(req: NextRequest) {
     const settings = getAppSettings();
     const webhookUrl = `${settings.webhookBaseUrl}/api/queue/dispatch`;
 
-    // If QStash is active, register the first batch of jobs to QStash
+    // If QStash is active, register all campaign jobs to QStash email_job_queue with true calendar delays
     if (settings.qstashToken) {
-      // Schedule the first batch jobs
-      const firstBatchJobs = campaign.jobs.slice(0, calculation.emailsPerBatch);
+      const now = Date.now();
       
-      for (let i = 0; i < firstBatchJobs.length; i++) {
-        const job = firstBatchJobs[i];
-        const delaySeconds = i * (config.intervalSeconds || 60);
-        await scheduleQStashJob(job, webhookUrl, delaySeconds, settings.qstashToken);
+      for (const job of campaign.jobs) {
+        if (job.status !== 'queued') continue;
+        const targetTimeMs = new Date(job.scheduledTime).getTime();
+        // True delay: difference between current moment and scheduled calendar time
+        const delaySeconds = Math.max(0, Math.round((targetTimeMs - now) / 1000));
+        
+        const qstashRes = await scheduleQStashJob(
+          job,
+          webhookUrl,
+          delaySeconds,
+          settings.qstashToken,
+          'email_job_queue'
+        );
+
+        if (qstashRes.messageId) {
+          job.qStashMessageId = qstashRes.messageId;
+        }
       }
+
+      // Persist updated jobs with QStash message IDs to MongoDB / Redis
+      await saveCampaignState(campaign);
     }
 
     return NextResponse.json({
